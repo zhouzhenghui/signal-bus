@@ -41,6 +41,7 @@ do { \
           CLOSURE_COMMIT_RETAIN_VARS(); \
         } else { \
           __PP_REMOVE_PARENS(finalization); \
+          CONTINUATION_DESTRUCT(&__CLOSURE_PTR->cont); \
         } \
     ) \
   ); \
