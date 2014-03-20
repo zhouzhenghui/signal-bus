@@ -26,10 +26,12 @@ int main()
   CLOSURE_INIT(closure);
   
   CLOSURE_CONNECT(closure
+    , (/* empty initialization */)
     , (
+      /* continuation */
       printf("%s\n", CLOSURE_ARG_OF_(&closure)->_1);
     )
-    , ()
+    , (/* empty finalization */)
   );
   
   CLOSURE_RUN(closure, "Hello World!");
