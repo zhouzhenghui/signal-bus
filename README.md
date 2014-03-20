@@ -13,6 +13,7 @@ Example
 -------
 
 A simple example of closure:
+
 closure的简单示例：
 
 ```c
