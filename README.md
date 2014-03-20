@@ -8,3 +8,36 @@ Event-driven, universal asychronous/parallel infrastructure for C/C++, built on 
 通过提供closure，并行化coroutine和异步的signal-slot机制，极大的帮助了使用命令式语言书写异步和并行代码。
 
 Several language level facilities are afforded, which help a lot in writing asychronous and parallel code in imperative language, including closure, concurrent coroutine and the asychronous signal-slot mechanism. 
+
+Example
+-------
+
+A simple example of closure:
+closure的简单示例：
+
+```c
+#include <stdio.h>
+#include <continuation/closure.h>
+
+int main()
+{
+  CLOSURE(char *) closure;
+
+  CLOSURE_INIT(closure);
+  
+  CLOSURE_CONNECT(closure
+    , (
+      printf("%s\n", CLOSURE_ARG_OF_(&closure)->_1);
+    )
+    , ()
+  );
+  
+  CLOSURE_RUN(closure, "Hello World!");
+  
+  CLOSURE_FREE(closure);
+  
+  return 0;
+}
+```
+
+
