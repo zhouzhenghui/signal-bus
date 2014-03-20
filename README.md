@@ -24,9 +24,9 @@ int main()
 {
   CLOSURE(char *) closure;
 
-  CLOSURE_INIT(closure);
+  CLOSURE_INIT(&closure);
   
-  CLOSURE_CONNECT(closure
+  CLOSURE_CONNECT(&closure
     , (/* empty initialization */)
     , (
       /* continuation */
@@ -35,9 +35,9 @@ int main()
     , (/* empty finalization */)
   );
   
-  CLOSURE_RUN(closure, "Hello World!");
+  CLOSURE_RUN(&closure, "Hello World!");
   
-  CLOSURE_FREE(closure);
+  CLOSURE_FREE(&closure);
   
   return 0;
 }
