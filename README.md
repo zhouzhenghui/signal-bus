@@ -1,9 +1,9 @@
 c-sigslot
 =========
 
-构建于源代码层次continuation和无锁并行设施上的通用的C/C++事件驱动，异步/并行基础架构。
+构建于源代码层次continuation和无锁并行设施上的通用的C/C++事件驱动，异步/并行基础架构。它底层使用一个无锁优先队列数据结构，从而可以不使用锁来书写并行化程序。 
 
-Event-driven, universal asychronous/parallel infrastructure for C/C++, built on source level continuation and lock-free concurrency mechanism for C language.
+Event-driven, universal asychronous/parallel infrastructure for C/C++, built on source level continuation and lock-free concurrency mechanism for C language. It use a universal lock-free priority queue as the foundation data-structure, so that one can programming concurrency without any lock. 
 
 通过提供closure，并行化coroutine和异步的signal-slot机制，极大的帮助了使用命令式语言书写异步和并行代码。
 
