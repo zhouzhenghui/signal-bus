@@ -46,6 +46,7 @@ Outputs display:
 Hello World!
 
 **Closure vs. Callback**
+
 The simple example shows that a closure is somthing like a callback, which is often defined as a function pointer in C language.
 
 这个简单的例子展示了一个closure类似于一个回调函数，在c语言中通常定义为一个函数指针。
