@@ -42,7 +42,8 @@ int main()
   return 0;
 }
 ```
-Outputs display:
+Outputs:
+
 Hello World!
 
 **Closure vs. Callback**
@@ -108,4 +109,5 @@ int main()
 }
 ```
 Outputs:
+
 the sum result is: 10
