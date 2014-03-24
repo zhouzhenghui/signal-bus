@@ -169,7 +169,7 @@ Outputs:
 
 the sum result is: 55
 
-Notice that we print the result in finaliztion block. The finalization is only executed once when macro CLOSURE_FREE is invoked. A closure will be unconnected after then, the status is same as when it had not yet been connected with macro CLOSURE_CONNECT. Nothing to do when invoke an unconnected closure.
+Notice that we print the result in finalization block. The finalization is only executed once when macro CLOSURE_FREE is invoked. A closure will be unconnected after then, the status is same as when it had not yet been connected with macro CLOSURE_CONNECT. Nothing to do when invoke an unconnected closure.
 
 注意到我们是在finalization代码块中打印结果。finalization代码块只会在CLOSURE_FREE被调用时执行一次。之后closure将变成未连接的，这个状态和还没有使用CLOSURE_CONNECT进行连接时一样。调用一个未连接的closure将什么也不会发生。
 
