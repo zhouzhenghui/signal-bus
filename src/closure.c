@@ -8,7 +8,7 @@
 static void __closure_run(struct __Closure *closure);
 void(* closure_run)(void *) = (void(*)(void *))__closure_run;
 
-inline static closure_invoke(struct __Closure *closure)
+inline static void closure_invoke(struct __Closure *closure)
 {
   struct __ClosureStub closure_stub;
   closure_stub.closure = closure;
