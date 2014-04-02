@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <static_assert/static_assert.h>
 
 struct __Vector {
   char *item;
@@ -26,7 +27,7 @@ struct __Vector {
 #define VECTOR_APPEND_ITEM(vector, elem) \
 do { \
   size_t __new_size = (vector)->size + 1; \
-  BUILD_ASSERT(sizeof(struct __Vector) == sizeof(*(vector))); \
+  (void)STATIC_ASSERT_OR_ZERO(sizeof(struct __Vector) == sizeof(*(vector)), uncompatible_VECTOR_type); \
   __vector_resize((struct __Vector *)(vector), __new_size, sizeof(*(vector)->item)); \
   /* Some optimization (e.g. gcc) break the sequence between here, so use a __new_size to avoid it */ \
   (vector)->item[__new_size - 1] = elem; \
@@ -36,7 +37,7 @@ do { \
 # define VECTOR_APPEND(vector, ...) \
 do { \
   size_t __new_size = (vector)->size + 1; \
-  BUILD_ASSERT(sizeof(struct __Vector) == sizeof(*(vector))); \
+  (void)STATIC_ASSERT_OR_ZERO(sizeof(struct __Vector) == sizeof(*(vector)), uncompatible_VECTOR_type); \
   __vector_resize((struct __Vector *)(vector), __new_size, sizeof(*(vector)->item)); \
   /* Some optimization (e.g. gcc) break the sequence between here, so use a __new_size to avoid it */ \
   (vector)->item[__new_size - 1] = __VA_ARGS__; \
@@ -47,27 +48,27 @@ do { \
 
 #define VECTOR_APPEND_ITEMS(vector, count, items) \
 do { \
-  BUILD_ASSERT(sizeof(struct __Vector) == sizeof(*(vector))); \
-  BUILD_ASSERT(sizeof(*((vector)->item)) == sizeof(*(items))); \
+  (void)STATIC_ASSERT_OR_ZERO(sizeof(struct __Vector) == sizeof(*(vector)), uncompatible_VECTOR_type); \
+  (void)STATIC_ASSERT_OR_ZERO(sizeof(*((vector)->item)) == sizeof(*(items)), append_VECTOR_with_different_type_of_items); \
   if (0) { (vector)->item[0] = (items)[0]; } \
   __vector_append((struct __Vector *)(vector), count, sizeof(*(items)), items); \
 } while (0)
 
 #define VECTOR_RESERVE(vector, count) \
 do { \
-  BUILD_ASSERT(sizeof(struct __Vector) == sizeof(*(vector))); \
+  (void)STATIC_ASSERT_OR_ZERO(sizeof(struct __Vector) == sizeof(*(vector)), uncompatible_VECTOR_type); \
   __vector_reserve((struct __Vector *)(vector), (vector)->size + count, sizeof(*((vector)->item))); \
 } while (0)
 
 #define VECTOR_RESIZE(vector, new_size) \
 do { \
-  BUILD_ASSERT(sizeof(struct __Vector) == sizeof(*(vector))); \
+  (void)STATIC_ASSERT_OR_ZERO(sizeof(struct __Vector) == sizeof(*(vector)), uncompatible_VECTOR_type); \
   __vector_resize((struct __Vector *)(vector), new_size, sizeof(*((vector)->item))); \
 } while (0)
 
 #define VECTOR_CLEAR(vector) \
 do { \
-  BUILD_ASSERT(sizeof(struct __Vector) == sizeof(*(vector))); \
+  (void)STATIC_ASSERT_OR_ZERO(sizeof(struct __Vector) == sizeof(*(vector)), uncompatible_VECTOR_type); \
   (vector)->size = 0; \
 } while (0)
 

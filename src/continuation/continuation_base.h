@@ -34,7 +34,7 @@ struct __ContinuationStub {
   } addr;
   union {
     size_t stack_frame_size;
-    size_t stack_frame_offset;
+    ptrdiff_t stack_frame_offset;
   } size;
   jmp_buf return_buf;
 };

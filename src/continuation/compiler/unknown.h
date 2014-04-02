@@ -88,7 +88,7 @@ do { \
   jmp_buf __continuation_jmp__; \
   memcpy(&__continuation_jmp__, &(cont_stub)->cont->invoke_buf, sizeof(jmp_buf)); \
   if (setjmp(__continuation_env__) == 0) { \
-    __continuation_pthread_patch_jmpbuf(&__continuation_jmp__, &__continuation_env__); \
+    __continuation_patch_jmpbuf(&__continuation_jmp__, &__continuation_env__); \
     longjmp(__continuation_jmp__, (int)(cont_stub)); \
   } \
 } while (0)

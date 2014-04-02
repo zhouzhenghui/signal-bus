@@ -53,11 +53,22 @@ struct { \
   struct __Closure closure; \
   struct { \
       BOOST_PP_REPEAT(n, __CLOSURE_FIELDS, BOOST_PP_TUPLE_TO_SEQ(n, tuple)) \
+      char end; /* for MSVC compatible */ \
   } arg; \
 }
 
-#define CLOSURE_WITHOUT_PARAM_SIZE \
-  sizeof(struct { struct __Closure closure; struct { } arg; })
+struct __ClosureEmpty { struct __Closure closure; struct { char end; } arg; };
+
+#define CLOSURE_EMPTY_SIZE \
+  sizeof(struct __ClosureEmpty)
+
+#ifdef __GNUC__
+# define CLOSURE_IS_EMPTY(closure_ptr) \
+  (&((typeof((closure_ptr)->arg)*)0)->end == 0)
+#else
+# define CLOSURE_IS_EMPTY(closure_ptr) \
+  ((void *)&(closure_ptr)->arg == (void *)&(closure_ptr)->arg.end)
+#endif
 
 #if BOOST_PP_VARIADICS
 # define CLOSURE(...) CLOSURE_N(__PP_VARIADIC_SIZE_OR_ZERO(__VA_ARGS__), BOOST_PP_VARIADIC_TO_TUPLE(__VA_ARGS__))

@@ -7,7 +7,7 @@
 
 #include <boost/preprocessor/variadic.hpp>
 #include <boost/preprocessor/control.hpp>
-#include <boost/preprocessor/facilities.hpp>
+#include <boost/preprocessor/facilities/expand.hpp>
 #include <preprocessor/is_empty.h>
 
 #if BOOST_PP_VARIADICS

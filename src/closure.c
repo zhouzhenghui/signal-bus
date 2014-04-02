@@ -25,7 +25,6 @@ static void __closure_run(struct __Closure *closure)
 
 void closure_free(struct __Closure *closure)
 {
-  struct __ClosureStub closure_stub;
   if (closure->connected) {
     closure->connected = 0;
     closure_invoke(closure);

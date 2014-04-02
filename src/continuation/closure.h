@@ -25,15 +25,15 @@ do { \
     struct __ClosureStub var; \
   } __CLOSURE__; \
   __CLOSURE_STUB = &__CLOSURE__.var; \
-  BUILD_ASSERT(offsetof(struct __ClosureStub, cont_stub) == 0); \
-  BUILD_ASSERT(sizeof(*(closure_ptr)) >= CLOSURE_WITHOUT_PARAM_SIZE); \
+  (void)STATIC_ASSERT_OR_ZERO(offsetof(struct __ClosureStub, cont_stub) == 0, cont_stub_should_be_first_member_of_struct_ClosureStub); \
+  (void)STATIC_ASSERT_OR_ZERO(sizeof(*(closure_ptr)) >= CLOSURE_EMPTY_SIZE, the_first_parameter_of_CLOSURE_CONNECT_is_not_a_valid_pointer_type_of_CLOSURE); \
   assert(!__CLOSURE_PTR->connected && "closure " #closure_ptr " had been connected"); \
   CONTINUATION_CONNECT(&__CLOSURE_PTR->cont, __CLOSURE_STUB \
     , initialization \
     , ( \
         CONTINUATION_RESTORE_STACK_FRAME(__CLOSURE_STUB, __CLOSURE_STUB->closure->frame); \
         __CLOSURE_PTR = __CLOSURE_STUB->closure; \
-        if (sizeof(*(closure_ptr)) > CLOSURE_WITHOUT_PARAM_SIZE && __CLOSURE_PTR != (void *)(closure_ptr)) { \
+        if (!CLOSURE_IS_EMPTY(closure_ptr) && __CLOSURE_PTR != (void *)(closure_ptr)) { \
           memcpy(&(closure_ptr)->arg, (char *)__CLOSURE_PTR + ((char *)(&(closure_ptr)->arg) - (char *)(closure_ptr)), sizeof((closure_ptr)->arg)); \
         } \
         if (__CLOSURE_PTR->connected) { \
@@ -404,7 +404,6 @@ do { \
 
 #define CLOSURE_RUN_N(n, closure_ptr, tuple) \
 do { \
-  BUILD_ASSERT(closure_ptr == (void *)&(closure_ptr)->closure); \
   CLOSURE_INIT_ARGS_N(n, closure_ptr, tuple); \
   closure_run(closure_ptr); \
 } while (0)

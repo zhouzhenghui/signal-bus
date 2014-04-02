@@ -47,7 +47,7 @@ extern "C" {
     __async_pthread_create(); \
     { \
       struct __AsyncTask *__ASYNC_TASK = pthread_getspecific(__async_pthread_key); \
-      BUILD_ASSERT(offsetof(struct __AsyncTask, cont_stub) == 0); \
+      (void)STATIC_ASSERT_OR_ZERO(offsetof(struct __AsyncTask, cont_stub) == 0, cont_stub_should_be_first_member_of_struct_AsyncTask); \
       assert(__ASYNC_TASK != NULL); \
       CONTINUATION_CONNECT(&__ASYNC_TASK->cont, __ASYNC_TASK \
         , () \

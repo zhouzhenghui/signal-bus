@@ -26,7 +26,7 @@
 #else
 /**
  * a single marco argument empty detect
- * ported from variadic_macro_data in BOOST sandbox and chaospp project on sourceforge.net
+ * ported from variadic_macro_data in BOOST sandbox and chaos-pp project on sourceforge.net
  */
 #  define __PP_IS_EMPTY_D(a) __PP_IS_BEGIN_PARENS(a)
 #  define __PP_IS_EMPTY_NON_FUNCTION_C() ()
