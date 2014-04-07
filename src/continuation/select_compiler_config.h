@@ -28,6 +28,14 @@
 /* ARMCC */
 #   define CONTINUATION_COMPILER_CONFIG "compiler/armcc.h"
 
+#elif defined _MSC_VER
+/*  Microsoft Visual C++
+//
+//  Must remain the last #elif since some other vendors (Metrowerks, for
+//  example) also #define _MSC_VER
+*/
+#   define CONTINUATION_COMPILER_CONFIG "compiler/msvc.h"
+
 #endif
 
 /**
@@ -111,13 +119,6 @@
 #elif defined(__PGI)
 //  Portland Group Inc.
 #   define BOOST_COMPILER_CONFIG "boost/config/compiler/pgi.hpp"
-
-#elif defined _MSC_VER
-//  Microsoft Visual C++
-//
-//  Must remain the last #elif since some other vendors (Metrowerks, for
-//  example) also #define _MSC_VER
-#   define BOOST_COMPILER_CONFIG "boost/config/compiler/visualc.hpp"
 
 #elif defined (BOOST_ASSERT_CONFIG)
 // this must come last - generate an error if we don't

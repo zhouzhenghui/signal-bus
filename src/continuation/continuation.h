@@ -641,7 +641,7 @@ static void __continuation_init_invoke_stub(struct __ContinuationStub *cont_stub
             , "compiler specified CONTINUATION_EXTEND_STACK_FRAME facility compliance test failed")));
 #   endif
 #   if (!defined(CONTINUATION_STACK_FRAME_REVERSE) || CONTINUATION_STACK_FRAME_REVERSE)
-    if (cont_stub->addr.stack_frame_addr - &stack_frame[0] < cont_stub->cont->offset_to_frame_tail) {
+    if ((size_t)(cont_stub->addr.stack_frame_addr - &stack_frame[0]) < cont_stub->cont->offset_to_frame_tail) {
       cont_stub->cont->stack_frame_addr = (void *)&temp[0];
       cont_stub->size.stack_frame_size = cont_stub->cont->offset_to_frame_tail;
       continuation_recursive_invoke(cont_stub);
