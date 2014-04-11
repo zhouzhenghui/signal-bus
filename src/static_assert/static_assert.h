@@ -54,14 +54,8 @@
  * or
  *	See the next STATIC_ASSERT_OR_ZERO expression.
  */
-#if defined(__COUNTER__) && __COUNTER__ != __COUNTER__
-# define STATIC_ASSERT_OR_TYPE(cond, msg) \
-  struct STATIC_ASSERT_CONCAT(__static_assertion_, __COUNTER__) \
-         { int STATIC_ASSERT_CONCAT(static_assertion_failed_, msg) : !!(cond); }
-#else
-# define STATIC_ASSERT_OR_TYPE(cond, msg) \
+#define STATIC_ASSERT_OR_TYPE(cond, msg) \
   struct { int STATIC_ASSERT_CONCAT(static_assertion_failed_, msg) : !!(cond); }
-#endif
 
 /**
  * STATIC_ASSERT_OR_ZERO - assert a compile time dependency, as an expression.
