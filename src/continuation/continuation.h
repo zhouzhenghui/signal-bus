@@ -84,7 +84,7 @@ do { \
   || defined(CONTINUATION_EXTEND_STACK_FRAME)
 # define CONTINUATION_SET_FRAME_SIZE(cont, size) \
 do { \
-  assert(CONTINUATION_IS_INITIALIZED(cont) && "XXX_SET_FRAME_SIZE is only available in initialization"); \
+  assert(!CONTINUATION_IS_INITIALIZED(cont) && "XXX_SET_FRAME_SIZE is only available in initialization"); \
   (cont)->stack_frame_size = size; \
 } while (0)
 # define CONTINUATION_SET_STACK_FRAME_SIZE(cont) CONTINUATION_SET_FRAME_SIZE(cont)
