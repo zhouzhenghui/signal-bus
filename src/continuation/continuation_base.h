@@ -45,7 +45,7 @@ inline static void continuation_init(struct __Continuation *cont, const void *st
   cont->stack_frame_addr = NULL;
   cont->stack_frame_tail = NULL;
   cont->stack_frame_size = 0;
-  cont->stack_frame_spot = stack_frame_spot;
+  cont->stack_frame_spot = (const char *)stack_frame_spot;
   cont->invoke = NULL;
 }
 

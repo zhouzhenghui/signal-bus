@@ -28,6 +28,8 @@ struct __AsyncTask {
   pthread_cond_t running;
 };
 
+STATIC_ASSERT(offsetof(struct __AsyncTask, cont_stub) == 0, self_contraint_of_internal_struct_AsyncTask);
+
 extern struct __AsyncTask *(*__async_copy_stack_frame)(struct __AsyncTask *);
 #ifdef __cplusplus
 extern "C" {
@@ -46,8 +48,7 @@ extern "C" {
 #define __ASYNC_RUN(continuation) \
     __async_pthread_create(); \
     { \
-      struct __AsyncTask *__ASYNC_TASK = pthread_getspecific(__async_pthread_key); \
-      (void)STATIC_ASSERT_OR_ZERO(offsetof(struct __AsyncTask, cont_stub) == 0, cont_stub_should_be_first_member_of_struct_AsyncTask); \
+      struct __AsyncTask *__ASYNC_TASK = (struct __AsyncTask *)pthread_getspecific(__async_pthread_key); \
       assert(__ASYNC_TASK != NULL); \
       CONTINUATION_CONNECT(&__ASYNC_TASK->cont, __ASYNC_TASK \
         , () \

@@ -17,9 +17,9 @@
 #if defined (_M_IX86)
 
 struct __ExceptionRegistrationRecord
-{     
-  struct __ExceptionRegistrationRecord *prev;     
-  FARPROC handler;     
+{
+  struct __ExceptionRegistrationRecord *prev;
+  FARPROC handler;
 };
 
 struct __ScopeTableEntry
@@ -31,10 +31,10 @@ struct __ScopeTableEntry
 
 struct __VCExceptionRegistrationRecord
 {
-	struct __ExceptionRegistrationRecord exception_registration;
-	struct __ScopeTableEntry *scope_table;
-    int trylevel;     
-    int _ebp;     
+  struct __ExceptionRegistrationRecord exception_registration;
+  struct __ScopeTableEntry *scope_table;
+  int trylevel;
+  int _ebp;
 };
 
 # define CONTINUATION_CONSTRUCT(cont) \
@@ -44,7 +44,7 @@ struct __VCExceptionRegistrationRecord
       __asm mov eax, FS:[0] \
       __asm mov [pVCExcRec], eax \
     } \
-	(cont)->stack_frame_addr = (char *)pVCExcRec + sizeof(struct __VCExceptionRegistrationRecord); \
+    (cont)->stack_frame_addr = (char *)pVCExcRec + sizeof(struct __VCExceptionRegistrationRecord); \
   } __except(EXCEPTION_EXECUTE_HANDLER) { \
   }
 

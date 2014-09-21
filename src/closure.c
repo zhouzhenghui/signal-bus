@@ -47,7 +47,7 @@ void __closure_init_vars_debug(struct __Closure *closure, __ClosureVarDebugVecto
   struct __ClosureVarDebug *arg;
   VECTOR_FOREACH(arg, argv) {
     size_t offset = (size_t)arg->addr - (size_t)closure->cont.stack_frame_tail;
-    fprintf(stderr, "[CLOSURE_DEBUG] The variable \"%s\" offset is %d of a %d bytes size closure stack frame. at: file \"%s\", line %d\n"
+    fprintf(stderr, "[CLOSURE_DEBUG] The variable \"%s\" has an offset of %d in %d bytes stack frame. at: file \"%s\", line %d\n"
             , arg->name, offset, closure->cont.stack_frame_size, file, line);
     arg->value = (char *)closure->frame + offset;
   }

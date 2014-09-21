@@ -9,7 +9,7 @@
 #include "continuation.h"
 #include <preprocessor/is_void_cast.h>
 
-/* these variables will intrude into the user's name space */
+/* these variables will pollute the user's namespace */
 #define __CLOSURE__ __closure__
 #define __CLOSURE_STUB __CLOSURE__.ptr
 #define __CLOSURE_PTR  __closure_ptr
@@ -25,8 +25,7 @@ do { \
     struct __ClosureStub var; \
   } __CLOSURE__; \
   __CLOSURE_STUB = &__CLOSURE__.var; \
-  (void)STATIC_ASSERT_OR_ZERO(offsetof(struct __ClosureStub, cont_stub) == 0, cont_stub_should_be_first_member_of_struct_ClosureStub); \
-  (void)STATIC_ASSERT_OR_ZERO(sizeof(*(closure_ptr)) >= CLOSURE_EMPTY_SIZE, the_first_parameter_of_CLOSURE_CONNECT_is_not_a_valid_pointer_type_of_CLOSURE); \
+  (void)STATIC_ASSERT_OR_ZERO(sizeof(*(closure_ptr)) >= CLOSURE_EMPTY_SIZE, wrong_closure_handle_in_CLOSURE_CONNECT); \
   assert(!__CLOSURE_PTR->connected && "closure " #closure_ptr " had been connected"); \
   CONTINUATION_CONNECT(&__CLOSURE_PTR->cont, __CLOSURE_STUB \
     , initialization \
@@ -34,7 +33,7 @@ do { \
         CONTINUATION_RESTORE_STACK_FRAME(__CLOSURE_STUB, __CLOSURE_STUB->closure->frame); \
         __CLOSURE_PTR = __CLOSURE_STUB->closure; \
         if (!CLOSURE_IS_EMPTY(closure_ptr) && __CLOSURE_PTR != (void *)(closure_ptr)) { \
-          memcpy(&(closure_ptr)->arg, (char *)__CLOSURE_PTR + ((char *)(&(closure_ptr)->arg) - (char *)(closure_ptr)), sizeof((closure_ptr)->arg)); \
+          memcpy(&(closure_ptr)->arg, (char *)__CLOSURE_PTR + ((size_t)(&(closure_ptr)->arg) - (size_t)(closure_ptr)), sizeof((closure_ptr)->arg)); \
         } \
         if (__CLOSURE_PTR->connected) { \
           __PP_REMOVE_PARENS(continuation); \
@@ -45,7 +44,7 @@ do { \
         } \
     ) \
   ); \
-  __CLOSURE_PTR->frame = malloc(CLOSURE_GET_STACK_FRAME_SIZE(__CLOSURE_PTR)); \
+  __CLOSURE_PTR->frame = (char *)malloc(CLOSURE_GET_STACK_FRAME_SIZE(__CLOSURE_PTR)); \
   CONTINUATION_BACKUP_STACK_FRAME(&__CLOSURE_PTR->cont, __CLOSURE_PTR->frame); \
   __CLOSURE_INIT_VARS(__CLOSURE_PTR); \
   __CLOSURE_PTR->connected = 1; \
@@ -101,7 +100,7 @@ do { \
 
 #if defined(__GNUC__)
 # define CLOSURE_VAR_ADDR(a) \
-  ((__typeof__(a) *)((char *)__CLOSURE_PTR->frame + CLOSURE_VAR_OFFSET(a)))
+  ((__typeof__(a) *)((size_t)__CLOSURE_PTR->frame + CLOSURE_VAR_OFFSET(a)))
 #else
 # define CLOSURE_VAR_ADDR(a) \
   (0 : &a ? (size_t)__CLOSURE_PTR->frame + CLOSURE_VAR_OFFSET(a))
@@ -277,31 +276,32 @@ do { \
 
 #ifdef CLOSURE_DEBUG
 inline static void __closure_var_vector_append_debug(__ClosureVarDebugVector *argv, const char *name, void *addr, size_t size, void *value) {
-  struct __ClosureVarDebug temp = {name, addr, size, value};
+  struct __ClosureVarDebug temp = { name, addr, size, value };
   VECTOR_APPEND(argv, temp);
 }
 # define __CLOSURE_VAR_VECTOR_APPEND(arg, value) \
   do { \
-    __closure_var_vector_append_debug(&__CLOSURE_PTR->argv, BOOST_PP_STRINGIZE(arg), (void *)CLOSURE_HOST_VAR_ADDR(arg), sizeof(arg), (void *)(value)); \
-    BOOST_PP_EXPR_IF(BOOST_PP_NOT(__PP_IS_VOID_CAST(value)) \
-        , printf("[CLOSURE_DEBUG] The variable \"%s\" offset is %d of a %d bytes size closure stack frame. at: file \"%s\", line %d\n" \
+    __closure_var_vector_append_debug(&__CLOSURE_PTR->argv, BOOST_PP_STRINGIZE(arg), (void *)CLOSURE_HOST_VAR_ADDR(arg) \
+        , sizeof(arg), BOOST_PP_IF(__PP_IS_EMPTY(value), NULL, (void *)(value))); \
+    BOOST_PP_EXPR_IF(BOOST_PP_NOT(__PP_IS_EMPTY(value)) \
+        , printf("[CLOSURE_DEBUG] The variable \"%s\" has an offset of %d in %d bytes stack frame. at: file \"%s\", line %d\n" \
                   , BOOST_PP_STRINGIZE(arg), CLOSURE_VAR_OFFSET(arg), CLOSURE_GET_FRAME_SIZE_OF_THIS(), __FILE__, __LINE__); \
     ) \
   } while (0)
 #else
 inline static void __closure_var_vector_append(__ClosureVarVector *argv, void *addr, size_t size, void *value) {
-  struct __ClosureVar temp = {addr, size, value};
+  struct __ClosureVar temp = { addr, size, value };
   VECTOR_APPEND(argv, temp);
 }
 # define __CLOSURE_VAR_VECTOR_APPEND(arg, value) \
-  __closure_var_vector_append(&__CLOSURE_PTR->argv, (void *)CLOSURE_HOST_VAR_ADDR(arg), sizeof(arg), (void *)(value))
+  __closure_var_vector_append(&__CLOSURE_PTR->argv, (void *)CLOSURE_HOST_VAR_ADDR(arg), sizeof(arg), BOOST_PP_IF(__PP_IS_EMPTY(value), NULL, (void *)(value)))
 #endif
 
 #define CLOSURE_RETAIN_VAR(v) \
 do { \
   if (!CONTINUATION_IS_INITIALIZED(&__CLOSURE_PTR->cont)) { \
     CLOSURE_RESERVE_VAR(v); \
-    __CLOSURE_VAR_VECTOR_APPEND(v, NULL); \
+    __CLOSURE_VAR_VECTOR_APPEND(v, ); \
   } else { \
     CLOSURE_ASSERT_VAR(v); \
     __CLOSURE_VAR_VECTOR_APPEND(v, CLOSURE_VAR_ADDR(v)); \

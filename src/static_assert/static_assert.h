@@ -27,7 +27,7 @@
     typedef struct { int STATIC_ASSERT_CONCAT(static_assertion_failed_, msg) : !!(expr); } \
       STATIC_ASSERT_CONCAT(static_assertion_failed_, __COUNTER__)
 #else
-# ifdef __GNUC__
+# if defined(__GNUC__) && !defined(__cpluscplus)
 #   define STATIC_ASSERT_HELPER(expr, msg) \
       (!!sizeof(struct { unsigned int static_assertion_failed_##msg: (expr) ? 1 : -1; }))
 #   define STATIC_ASSERT(expr, msg) \
@@ -76,6 +76,6 @@
  *		    , string_should_be_first_member_of_struct_foo)
  */
 #define STATIC_ASSERT_OR_ZERO(cond, msg) \
-  (!sizeof(STATIC_ASSERT_OR_TYPE(cond, msg)))
+  offsetof(struct { int _1; STATIC_ASSERT_OR_TYPE(cond, msg) _2; }, _1)
 
 #endif /* __STATIC_ASSERT_H */

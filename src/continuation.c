@@ -84,7 +84,7 @@ void __continuation_patch_jmpbuf(jmp_buf *dst, jmp_buf *src)
 static void continuation_invoke_helper(struct __ContinuationStub *cont_stub)
 {
   volatile char anti_optimize[1];
-  cont_stub->addr.stack_frame_addr = (void *)&anti_optimize[0];
+  cont_stub->addr.stack_frame_addr = (char *)&anti_optimize[0];
   cont_stub->cont->invoke(cont_stub);
   anti_optimize[0] = 0; /* prevent tail-call optimization */
 }

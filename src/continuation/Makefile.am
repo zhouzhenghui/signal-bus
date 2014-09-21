@@ -12,7 +12,9 @@ if HAVE_PTHREAD
 endif
 
 nobase_continuation_include_HEADERS = \
-        compiler/armcc.h compiler/gcc.h \
+        compiler/armcc.h \
+        compiler/gcc.h \
+        compiler/msvc.h \
         compiler/unknown.h \
         misc/vector.h \
         misc/continuation_inline.h \

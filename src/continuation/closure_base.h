@@ -45,6 +45,8 @@ struct __ClosureStub {
   struct __Closure *closure;
 };
 
+STATIC_ASSERT(offsetof(struct __ClosureStub, cont_stub) == 0, self_constraint_of_internal_struct_ClosureStub);
+
 #define __CLOSURE_FIELDS(z, n, seq) \
   BOOST_PP_SEQ_ELEM(n, seq) BOOST_PP_CAT(_, BOOST_PP_INC(n));
 

@@ -7,7 +7,9 @@
 
 #include "continuation_alloca.h"
 
-/* force optimize with no-omit-frame-pointer, may refer to https://bugs.kde.org/show_bug.cgi?id=243270 */
+/* force optimize with no-omit-frame-pointer, may refer to https://bugs.kde.org/show_bug.cgi?id=243270
+ * also discussed/confirmed by some gcc developers: http://gcc.gnu.org/ml/gcc/2011-10/msg00253.html
+ */
 #if (defined(__GNUC__) && (__GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 4))) || HAVE_BUILTIN_RETURN_ADDRESS
 # define FORCE_NO_OMIT_FRAME_POINTER() \
   do { \
