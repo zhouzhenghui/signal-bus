@@ -174,8 +174,15 @@ Notice that we print the result in finalization block. The finalization is only 
 注意到我们是在finalization代码块中打印结果。finalization代码块只会在CLOSURE_FREE被调用时执行一次。之后closure将变成未连接的，这个状态和还没有使用CLOSURE_CONNECT进行连接时一样。调用一个未连接的closure将什么也不会发生。
 
 That's almost all of closure, refer to documents for more details.
-
 这几乎就是closure的全部，更多细节请参考文档。
 
+**Parallelism in Closure/Continuation**
 
+Closure is thread-safe, it is said that, closure can be invoked simultaneously. But one should deal with race conditions himslef when accessing shared data in the closure, though some data may be only accessed by the same closure.
+
+Closure是线程安全的，这是说，它可以被同时调用。但是在closure内部访问共享数据时仍然必须处理竞争问题，尽管一些数据可能仅仅在同一个closure中被访问。
+
+In the later part, high level facility will be afforded, to provide large-range thread safety by linearizing the execution in place and in a lock-free manner.
+
+在后面部分里，提供了高层次的机制，通过就地，并且是无锁的，线性化执行过程，提供了大范围线程安全性，
 
