@@ -75,7 +75,22 @@
  *		  + STATIC_ASSERT_OR_ZERO(offsetof(struct foo, string) == 0) \
  *		    , string_should_be_first_member_of_struct_foo)
  */
-#define STATIC_ASSERT_OR_ZERO(cond, msg) \
-  offsetof(struct { int _1; STATIC_ASSERT_OR_TYPE(cond, msg) _2; }, _1)
+#if defined(_MSC_VER) && defined(__cplusplus)
+  namespace {
+    struct __StaticAssertValue { static const int value; };
+	const int __StaticAssertValue::value = 0;
+    template <class T, int N>
+    struct __StaticAssert;
+    template <class T>
+    struct __StaticAssert<T, 0> : public __StaticAssertValue {
+      using __StaticAssertValue::value;  
+    };
+  }
+# define STATIC_ASSERT_OR_ZERO(cond, msg) \
+    __StaticAssert<class msg, !(cond)>::value
+#else
+# define STATIC_ASSERT_OR_ZERO(cond, msg) \
+    offsetof(struct { int _1; STATIC_ASSERT_OR_TYPE(cond, msg) _2; }, _1)
+#endif
 
 #endif /* __STATIC_ASSERT_H */
