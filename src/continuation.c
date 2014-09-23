@@ -6,7 +6,7 @@
 
 int __continuation_jmpbuf_initialized = 0;
 int __continuation_jmpcode[sizeof(jmp_buf) / sizeof(void *)] = { 0 };
-void(*__continuation_enforce_var)(void * volatile) = 0;
+void(*__continuation_enforce_var)(char * volatile) = 0;
 
 /* this function should not be compiled with any optimization */
 #if defined(__GNUC__) && ((__GNUC__ == 4 && __GNUC_MINOR__ >= 4) || __GNUC__ > 4)

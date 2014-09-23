@@ -170,7 +170,7 @@ inline static int __continuation_variable_in_stack_frame(const struct __Continua
             , BOOST_PP_STRINGIZE(v) \
             , (char *)(&v) - (cont_stub)->addr.stack_frame_tail, (cont_stub)->cont->stack_frame_size, __FILE__, __LINE__) \
     , BOOST_PP_EXPAND(assert BOOST_PP_LPAREN() \
-            __continuation_variable_in_stack_frame(cont_stub, (void *)&v, sizeof(v)) \
+            __continuation_variable_in_stack_frame(cont_stub, &v, sizeof(v)) \
               && "variable " BOOST_PP_STRINGIZE(v) " is outside of the continuation stack frame" \
               && "try XXX_RESERVE_VAR(S)/XXX_ENFORCE_VAR(S) without compiler specified implementation" BOOST_PP_RPAREN()) \
   )
@@ -178,7 +178,7 @@ inline static int __continuation_variable_in_stack_frame(const struct __Continua
 # define __CONTINUATION_ASSERT_VAR(cont_stub, v) \
   ( \
     BOOST_PP_EXPAND(assert BOOST_PP_LPAREN() \
-            __continuation_variable_in_stack_frame(cont_stub, (void *)&v, sizeof(v)) \
+            __continuation_variable_in_stack_frame(cont_stub, &v, sizeof(v)) \
               && "variable " BOOST_PP_STRINGIZE(v) " is outside of the continuation stack frame" \
               && "try XXX_RESERVE_VAR(S)/XXX_ENFORCE_VAR(S) without compiler specified implementation" BOOST_PP_RPAREN()) \
   )
@@ -223,7 +223,7 @@ do { \
   } else { \
     __CONTINUATION_ASSERT_VAR(cont_stub, v); \
   } \
-  if (__continuation_enforce_var) __continuation_enforce_var((void *)&v); \
+  if (__continuation_enforce_var) __continuation_enforce_var((char *)&v); \
 } while (0)
 
 #define __CONTINUATION_ENFORCE_SEQ_ELEM(r, data, elem) \
@@ -254,13 +254,13 @@ do { \
 #if defined(__GNUC__)
 # define CONTINUATION_HOST_VAR_ADDR(cont_stub, v) \
   ((__typeof__(v) *) \
-    ((void)BOOST_PP_EXPAND(assert BOOST_PP_LPAREN() (!(cont_stub)->cont->initialized || __continuation_variable_in_stack_frame(cont_stub, (void *)&v, sizeof(v))) \
+    ((void)BOOST_PP_EXPAND(assert BOOST_PP_LPAREN() (!(cont_stub)->cont->initialized || __continuation_variable_in_stack_frame(cont_stub, &v, sizeof(v))) \
          && "The variable " BOOST_PP_STRINGIZE(v) " is outside of stack frame" BOOST_PP_RPAREN()) \
    , (size_t)&v - (cont_stub)->size.stack_frame_offset) \
   )
 #else
 # define CONTINUATION_HOST_VAR_ADDR(cont_stub, v) \
-  ((void)BOOST_PP_EXPAND(assert BOOST_PP_LPAREN() (!(cont_stub)->cont->initialized || __continuation_variable_in_stack_frame(cont_stub, (void *)&v, sizeof(v))) \
+  ((void)BOOST_PP_EXPAND(assert BOOST_PP_LPAREN() (!(cont_stub)->cont->initialized || __continuation_variable_in_stack_frame(cont_stub, &v, sizeof(v))) \
         && "The variable " BOOST_PP_STRINGIZE(v) " is outside of stack frame" BOOST_PP_RPAREN()) \
    , 0 ? &v : (size_t)&v - (cont_stub)->size.stack_frame_offset)
 #endif
@@ -293,7 +293,7 @@ do { \
   assert(((struct __ContinuationStub *)cont_stub)->cont->initialized && "XXX_RESTORE_STACK_FRAME is only available after initialized"); \
   assert((size_t)(stack_frame) < (size_t)((struct __ContinuationStub *)cont_stub)->cont->stack_frame_tail \
     || (size_t)(stack_frame) > (size_t)((struct __ContinuationStub *)cont_stub)->cont->stack_frame_tail + ((struct __ContinuationStub *)cont_stub)->cont->stack_frame_size); \
-  *((void **)&cont_stub) = continuation_restore_stack_frame((const struct __ContinuationStub *)cont_stub, stack_frame); \
+  *((struct __ContinuationStub **)&cont_stub) = continuation_restore_stack_frame((const struct __ContinuationStub *)cont_stub, stack_frame); \
 } while (0)
 
 #if !defined(CONTINUATION_INIT_INVOKE)

@@ -31,7 +31,7 @@ __inline static void __continuation_dummy() { }
 # define CONTINUATION_STUB_ENTRY(cont_stub) \
   do { \
     static void *(* volatile __continuation_entry__)(const void *, void **) = &__continuation_entry; \
-    *((void **)&cont_stub) = __continuation_entry__(cont_stub, &((struct __ContinuationStub *)cont_stub)->cont->func_addr); \
+    *((struct __ContinuationStub **)&cont_stub) = (struct __ContinuationStub *)__continuation_entry__(cont_stub, &((struct __ContinuationStub *)cont_stub)->cont->func_addr); \
     __asm { \
       BL __continuation_dummy, {}, {}, {r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11}; \
     } \

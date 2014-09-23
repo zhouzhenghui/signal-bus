@@ -49,7 +49,7 @@ do { \
     } __continuation_addr__; \
     __continuation_addr__.i = setjmp(((struct __ContinuationStub *)cont_stub)->cont->invoke_buf); \
     if (__continuation_addr__.i) { \
-      *((void **)&cont_stub) = (void *)__continuation_addr__.i; \
+      *((struct __ContinuationStub **)&cont_stub) = (struct __ContinuationStub *)__continuation_addr__.i; \
     } \
   } \
 } while (0)
@@ -77,7 +77,7 @@ do { \
     } __continuation_addr__; \
     __continuation_addr__.i = setjmp(((struct __ContinuationStub *)cont_stub)->cont->invoke_buf); \
     if (__continuation_addr__.i) { \
-      *((void **)&cont_stub) = (void *)__continuation_addr__.i; \
+      *((struct __ContinuationStub **)&cont_stub) = (struct __ContinuationStub *)__continuation_addr__.i; \
     } \
   } \
 } while (0)

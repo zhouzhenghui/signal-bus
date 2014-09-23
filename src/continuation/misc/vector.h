@@ -13,7 +13,11 @@ struct __Vector {
   void *item;
   size_t size;
   size_t alloc;
-};
+}
+#if defined(__GNUC__) && (__GNUC__ >= 4 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 3))
+__attribute__((__may_alias__))
+#endif
+;
 
 #define VECTOR(type) struct {type *item; size_t size; size_t alloc;}
 #define VECTOR_STATIC_INITIALIZER() {NULL,0,0}

@@ -27,7 +27,7 @@
     typedef struct { int STATIC_ASSERT_CONCAT(static_assertion_failed_, msg) : !!(expr); } \
       STATIC_ASSERT_CONCAT(static_assertion_failed_, __COUNTER__)
 #else
-# if defined(__GNUC__) && !defined(__cpluscplus)
+# if defined(__GNUC__) && !defined(__cplusplus)
 #   define STATIC_ASSERT_HELPER(expr, msg) \
       (!!sizeof(struct { unsigned int static_assertion_failed_##msg: (expr) ? 1 : -1; }))
 #   define STATIC_ASSERT(expr, msg) \

@@ -100,4 +100,10 @@
 # define CONTINUATION_STACK_BLOCK_SIZE 1024
 #endif
 
+#if defined(__GNUC__) && (__GNUC__ >= 4 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 3))
+# define CONTINUATION_ATTRIBUTE_MAY_ALIAS __attribute__((__may_alias__))
+#else
+# define CONTINUATION_ATTRIBUTE_MAY_ALIAS
+#endif
+
 #endif /* __CONTINUATION_CONFIG_H */

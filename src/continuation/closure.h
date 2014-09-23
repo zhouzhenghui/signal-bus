@@ -21,7 +21,7 @@
 do { \
   struct __Closure *__CLOSURE_PTR = &(closure_ptr)->closure; \
   struct { \
-    struct __ClosureStub *ptr; \
+    struct __ClosureStub * CONTINUATION_ATTRIBUTE_MAY_ALIAS ptr; \
     struct __ClosureStub var; \
   } __CLOSURE__; \
   __CLOSURE_STUB = &__CLOSURE__.var; \
@@ -184,7 +184,7 @@ do { \
 #define CLOSURE_COMMIT_VAR(v) \
   do { \
     CLOSURE_ASSERT_VAR(v); \
-    memcpy((char *)__CLOSURE_PTR->frame + CLOSURE_VAR_OFFSET(v), (void *)&v, sizeof(v)); \
+    memcpy((char *)__CLOSURE_PTR->frame + CLOSURE_VAR_OFFSET(v), (char *)&v, sizeof(v)); \
   } while (0)
 
 #define __CLOSURE_COMMIT_VAR_SEQ(z, n, seq) \
@@ -215,7 +215,7 @@ do { \
 #define CLOSURE_UPDATE_VAR(v) \
   do { \
     CLOSURE_ASSERT_VAR(v); \
-    memcpy((void *)&v, (char *)__CLOSURE_PTR->frame + CLOSURE_VAR_OFFSET(v), sizeof(v)); \
+    memcpy((char *)&v, (char *)__CLOSURE_PTR->frame + CLOSURE_VAR_OFFSET(v), sizeof(v)); \
   } while (0)
 
 #define __CLOSURE_UPDATE_VAR_SEQ(z, n, seq) \
@@ -246,7 +246,7 @@ do { \
 #define CLOSURE_UPDATE_HOST_VAR(v) \
   do { \
     CLOSURE_ASSERT_VAR(v); \
-    memcpy((char *)&v - CLOSURE_GET_FRAME_OFFSET(), (void *)&v, sizeof(v)); \
+    memcpy((char *)&v - CLOSURE_GET_FRAME_OFFSET(), (char *)&v, sizeof(v)); \
   } while (0)
 
 #define __CLOSURE_UPDATE_HOST_SEQ(z, n, seq) \
@@ -281,8 +281,8 @@ inline static void __closure_var_vector_append_debug(__ClosureVarDebugVector *ar
 }
 # define __CLOSURE_VAR_VECTOR_APPEND(arg, value) \
   do { \
-    __closure_var_vector_append_debug(&__CLOSURE_PTR->argv, BOOST_PP_STRINGIZE(arg), (void *)CLOSURE_HOST_VAR_ADDR(arg) \
-        , sizeof(arg), BOOST_PP_IF(__PP_IS_EMPTY(value), NULL, (void *)(value))); \
+    __closure_var_vector_append_debug(&__CLOSURE_PTR->argv, BOOST_PP_STRINGIZE(arg), (char *)CLOSURE_HOST_VAR_ADDR(arg) \
+        , sizeof(arg), BOOST_PP_IF(__PP_IS_EMPTY(value), NULL, (char *)(value))); \
     BOOST_PP_EXPR_IF(BOOST_PP_NOT(__PP_IS_EMPTY(value)) \
         , printf("[CLOSURE_DEBUG] The variable \"%s\" has an offset of %d in %d bytes stack frame. at: file \"%s\", line %d\n" \
                   , BOOST_PP_STRINGIZE(arg), CLOSURE_VAR_OFFSET(arg), CLOSURE_GET_FRAME_SIZE_OF_THIS(), __FILE__, __LINE__); \
@@ -294,7 +294,7 @@ inline static void __closure_var_vector_append(__ClosureVarVector *argv, void *a
   VECTOR_APPEND(argv, temp);
 }
 # define __CLOSURE_VAR_VECTOR_APPEND(arg, value) \
-  __closure_var_vector_append(&__CLOSURE_PTR->argv, (void *)CLOSURE_HOST_VAR_ADDR(arg), sizeof(arg), BOOST_PP_IF(__PP_IS_EMPTY(value), NULL, (void *)(value)))
+  __closure_var_vector_append(&__CLOSURE_PTR->argv, (char *)CLOSURE_HOST_VAR_ADDR(arg), sizeof(arg), BOOST_PP_IF(__PP_IS_EMPTY(value), NULL, (char *)(value)))
 #endif
 
 #define CLOSURE_RETAIN_VAR(v) \

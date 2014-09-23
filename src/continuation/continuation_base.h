@@ -49,7 +49,7 @@ inline static void continuation_init(struct __Continuation *cont, const void *st
   cont->invoke = NULL;
 }
 
-extern void(*__continuation_enforce_var)(void * volatile);
+extern void(*__continuation_enforce_var)(char * volatile);
 #ifdef __cplusplus
 extern "C" {
 #endif
