@@ -77,13 +77,9 @@
  */
 #if defined(_MSC_VER) && defined(__cplusplus)
   namespace {
-    struct __StaticAssertValue { static const int value; };
-	const int __StaticAssertValue::value = 0;
-    template <class T, int N>
-    struct __StaticAssert;
-    template <class T>
-    struct __StaticAssert<T, 0> : public __StaticAssertValue {
-      using __StaticAssertValue::value;  
+    template <class T, int N> struct __StaticAssert;
+    template <class T> struct __StaticAssert<T, 0> {
+      static const int value = 0;  
     };
   }
 # define STATIC_ASSERT_OR_ZERO(cond, msg) \
