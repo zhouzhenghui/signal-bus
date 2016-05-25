@@ -186,4 +186,3 @@ In the later part, high level facility will be afforded, to provide large-range 
 
 在后面部分里，提供了高层次的机制，通过就地，并且是无锁的，线性化执行过程，提供了大范围线程安全性，
 
-test
