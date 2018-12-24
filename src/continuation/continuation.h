@@ -33,10 +33,14 @@
 do { \
   continuation_init(cont_ptr, &cont_stub); \
   CONTINUATION_CONSTRUCT(cont_ptr); \
+  assert(((cont_ptr)->stack_frame_addr != NULL || ((cont_ptr)->stack_frame_tail == NULL && (cont_ptr)->invoke == NULL)) \
+          && "[CONTINUATION FAULT] compiler configuration compatible assertion failed"); \
   continuation_stub_init((struct __ContinuationStub *)cont_stub, cont_ptr); \
   /* the stack frame should contain variable cont_stub at least */ \
   ((struct __ContinuationStub *)cont_stub)->addr.stack_frame_addr = (char *)&cont_stub + sizeof(cont_stub); \
   ((struct __ContinuationStub *)cont_stub)->size.stack_frame_offset = 0; \
+  if ((cont_ptr)->stack_frame_tail == NULL || (cont_ptr)->stack_frame_tail > (char *)&cont_stub) \
+    (cont_ptr)->stack_frame_tail = (char *)&cont_stub; \
   { \
      __PP_REMOVE_PARENS(initialization); \
     CONTINUATION_STUB_ENTRY(cont_stub); \
@@ -54,7 +58,7 @@ do { \
         assert(((size_t)((struct __ContinuationStub *)cont_stub)->addr.stack_frame_addr > anti_optimize + ((size_t)&anti_optimize - anti_optimize) + sizeof(anti_optimize)) \
             && "[CONTINUATION FAULT] the size of continuation stack frame isn't enough, try to increase it"); \
         assert(((struct __ContinuationStub *)cont_stub)->addr.stack_frame_addr - ((struct __ContinuationStub *)cont_stub)->size.stack_frame_offset \
-                >= ((struct __ContinuationStub *)cont_stub)->cont->stack_frame_tail + ((struct __ContinuationStub *)cont_stub)->cont->stack_frame_size); \
+                >= ((struct __ContinuationStub *)cont_stub)->cont->stack_frame_tail + ((struct __ContinuationStub *)cont_stub)->cont->stack_frame_size - ((struct __ContinuationStub *)cont_stub)->cont->stack_parameters_size); \
         ((struct __ContinuationStub *)cont_stub)->addr.stack_frame_tail = ((struct __ContinuationStub *)cont_stub)->cont->stack_frame_tail \
                                                                     + ((struct __ContinuationStub *)cont_stub)->size.stack_frame_offset; \
       } \
@@ -65,6 +69,7 @@ do { \
     } \
     /* assert(((struct __ContinuationStub *)cont_stub)->cont == cont_ptr); */ \
     ((struct __ContinuationStub *)cont_stub)->cont->initialized = 1; \
+    ((struct __ContinuationStub *)cont_stub)->cont->stack_frame_size += ((struct __ContinuationStub *)cont_stub)->cont->stack_parameters_size; \
     ((struct __ContinuationStub *)cont_stub)->size.stack_frame_offset = 0; \
     ((struct __ContinuationStub *)cont_stub)->addr.stack_frame_tail = ((struct __ContinuationStub *)cont_stub)->cont->stack_frame_tail; \
   } \
@@ -96,6 +101,13 @@ do { \
     , (cont)->stack_frame_size)
 #define CONTINUATION_GET_STACK_FRAME_SIZE(cont) CONTINUATION_GET_FRAME_SIZE(cont)
 
+#define CONTINUATION_SET_PARAMS_SIZE(cont, size) \
+do { \
+  assert(!CONTINUATION_IS_INITIALIZED(cont) && "XXX_SET_PARAMS_SIZE is only available in initialization"); \
+  (cont)->stack_parameters_size = size; \
+} while (0)
+#define CONTINUATION_SET_STACK_PARAMS_SIZE(cont) CONTINUATION_SET_PARAMS_SIZE(cont)
+
 #define CONTINUATION_GET_HOST_FRAME(cont) \
   ((void)assert(CONTINUATION_IS_INITIALIZED(cont) && "XXX_GET_FRAME_SIZE is only available after initialized") \
     , (cont)->stack_frame_tail)
@@ -109,21 +121,25 @@ do { \
   ((cont_stub)->addr.stack_frame_tail)
 #define CONTINUATION_GET_STACK_FRAME(cont_stub) CONTINUATION_GET_FRAME(cont_stub)
 
-#define CONTINUATION_RESERVE_FRAME_ADDR(cont_stub, a) \
+#define CONTINUATION_RESERVE_FRAME_ADDR(cont_stub, a, size) \
 do { \
   assert(!(cont_stub)->cont->initialized && "XXX_RESERVE_FRAME_ADDR is only available in initialization"); \
-  __continuation_reserve_frame_addr(cont_stub, a); \
+  __continuation_reserve_frame_addr(cont_stub, a, size); \
 } while (0)
-inline static void __continuation_reserve_frame_addr(struct __ContinuationStub *cont_stub, void *addr)
+inline static void __continuation_reserve_frame_addr(struct __ContinuationStub *cont_stub, void *addr, size_t size)
 {
   char * volatile anti_optimize = (char *)addr;
   if (cont_stub->addr.stack_frame_addr < anti_optimize) {
-    cont_stub->addr.stack_frame_addr = anti_optimize;
+    cont_stub->addr.stack_frame_addr = anti_optimize + size;
+  } else {
+    if (cont_stub->cont->stack_frame_tail > anti_optimize) {
+      cont_stub->cont->stack_frame_tail = anti_optimize;
+    }
   }
 }
 
 #define __CONTINUATION_RESERVE_VAR(cont_stub, v) \
-  __continuation_reserve_frame_addr(cont_stub, (char *)&v + sizeof(v))
+  __continuation_reserve_frame_addr(cont_stub, (char *)&v, sizeof(v))
 
 #define CONTINUATION_RESERVE_VAR(cont_stub, v) \
   do { \
@@ -164,7 +180,32 @@ inline static int __continuation_variable_in_stack_frame(const struct __Continua
 }
 
 #ifdef CONTINUATION_DEBUG
-# define __CONTINUATION_ASSERT_VAR(cont_stub, v) \
+# if defined(__SIZEOF_SIZE_T__) && __SIZEOF_SIZE_T__ >= 8
+#   if defined(_WIN64) /* MSC or MINGW */
+#     define __CONTINUATION_ASSERT_VAR(cont_stub, v) \
+  ( \
+    (void)printf("[CONTINUATION_DEBUG] The variable \"%s\" has an offset of %lld in %lld bytes stack frame. at: file \"%s\", line %d\n" \
+            , BOOST_PP_STRINGIZE(v) \
+            , (char *)(&v) - (cont_stub)->addr.stack_frame_tail, (cont_stub)->cont->stack_frame_size, __FILE__, __LINE__) \
+    , BOOST_PP_EXPAND(assert BOOST_PP_LPAREN() \
+            __continuation_variable_in_stack_frame(cont_stub, &v, sizeof(v)) \
+              && "variable " BOOST_PP_STRINGIZE(v) " is outside of the continuation stack frame" \
+              && "try XXX_RESERVE_VAR(S)/XXX_ENFORCE_VAR(S) without compiler specified implementation" BOOST_PP_RPAREN()) \
+  )
+#   else
+#     define __CONTINUATION_ASSERT_VAR(cont_stub, v) \
+  ( \
+    (void)printf("[CONTINUATION_DEBUG] The variable \"%s\" has an offset of %zd in %zd bytes stack frame. at: file \"%s\", line %d\n" \
+            , BOOST_PP_STRINGIZE(v) \
+            , (char *)(&v) - (cont_stub)->addr.stack_frame_tail, (cont_stub)->cont->stack_frame_size, __FILE__, __LINE__) \
+    , BOOST_PP_EXPAND(assert BOOST_PP_LPAREN() \
+            __continuation_variable_in_stack_frame(cont_stub, &v, sizeof(v)) \
+              && "variable " BOOST_PP_STRINGIZE(v) " is outside of the continuation stack frame" \
+              && "try XXX_RESERVE_VAR(S)/XXX_ENFORCE_VAR(S) without compiler specified implementation" BOOST_PP_RPAREN()) \
+  )
+#   endif
+# else
+#   define __CONTINUATION_ASSERT_VAR(cont_stub, v) \
   ( \
     (void)printf("[CONTINUATION_DEBUG] The variable \"%s\" has an offset of %d in %d bytes stack frame. at: file \"%s\", line %d\n" \
             , BOOST_PP_STRINGIZE(v) \
@@ -174,6 +215,7 @@ inline static int __continuation_variable_in_stack_frame(const struct __Continua
               && "variable " BOOST_PP_STRINGIZE(v) " is outside of the continuation stack frame" \
               && "try XXX_RESERVE_VAR(S)/XXX_ENFORCE_VAR(S) without compiler specified implementation" BOOST_PP_RPAREN()) \
   )
+# endif
 #else
 # define __CONTINUATION_ASSERT_VAR(cont_stub, v) \
   ( \
@@ -186,18 +228,19 @@ inline static int __continuation_variable_in_stack_frame(const struct __Continua
 
 #define CONTINUATION_ASSERT_VAR(cont_stub, v) \
   ( \
-    assert((cont_stub)->cont->initialized && "XXX_ASSERT_VAR is only available after initialized")\
+    assert((cont_stub)->cont->initialized && "XXX_ASSERT_VAR is only available after initialized") \
     , __CONTINUATION_ASSERT_VAR(cont_stub, v) \
   )
 
 #define __CONTINUATION_ASSERT_SEQ_ELEM(r, data, elem) \
-  __CONTINUATION_ASSERT_VAR(data, elem);
+  __CONTINUATION_ASSERT_VAR(data, elem),
 
 #define CONTINUATION_ASSERT_VARS_N(cont_stub, n, tuple) \
   ( \
-    assert((cont_stub)->cont->initialized && "XXX_ASSERT_VARS is only available after initialized")\
-    , BOOST_PP_SEQ_FOR_EACH(__CONTINUATION_ASSERT_VAR, cont_stub, BOOST_PP_TUPLE_TO_SEQ(n, tuple)) \
-  ) \
+    assert((cont_stub)->cont->initialized && "XXX_ASSERT_VARS is only available after initialized") \
+    , BOOST_PP_SEQ_FOR_EACH(__CONTINUATION_ASSERT_SEQ_ELEM, cont_stub, BOOST_PP_TUPLE_TO_SEQ(n, tuple)) \
+    (void)0 \
+  )
 
 #if BOOST_PP_VARIADICS
 # define CONTINUATION_ASSERT_VARS(cont_stub, ...) CONTINUATION_ASSERT_VARS_N(cont_stub, __PP_VARIADIC_SIZE_OR_ZERO(__VA_ARGS__), BOOST_PP_VARIADIC_TO_TUPLE(__VA_ARGS__))
@@ -271,7 +314,7 @@ do { \
 #define CONTINUATION_ADDR_OFFSET(cont_stub, a) \
   ((void)assert((cont_stub)->cont->initialized && "XXX_ADDR_XXX is only available after initialized") \
     , (void)BOOST_PP_EXPAND(assert BOOST_PP_LPAREN() (size_t)(a) >= (size_t)(cont_stub)->addr.stack_frame_tail \
-                    && (size_t)(a) < (size_t)(cont_stub)->cont->stack_frame_addr + (cont_stub)->size.stack_frame_offset \
+                    && (size_t)(a) < (size_t)(cont_stub)->cont->stack_frame_tail + (cont_stub)->size.stack_frame_offset + (cont_stub)->cont->stack_frame_size \
                     && "The address " BOOST_PP_STRINGIZE(a) " is outside of stack frame" BOOST_PP_RPAREN()) \
     , ((size_t)(a) - (size_t)(cont_stub)->addr.stack_frame_tail))
 
@@ -305,12 +348,30 @@ do { \
 # define __CONTINUATION_ASSERT_CONTINUATION_EXTEND_STACK_FRAME
 # define __CONTINUATION_DEFINED_EXTEND_STACK_FRAME BOOST_PP_NOT(__PP_IS_EMPTY(BOOST_PP_CAT(__CONTINUATION_ASSERT_, CONTINUATION_EXTEND_STACK_FRAME)))
 # ifdef CONTINUATION_DEBUG
-#   define __CONTINUATION_STACK_FRAME_SIZE_DEBUG(cont_stub) \
-  printf("[CONTINUATION DEBUG] the continuation has a stack frame of %d bytes, at: file \"%s\", line %d\n" \
+#   if defined(__SIZEOF_SIZE_T__) && __SIZEOF_SIZE_T__ >= 8
+#     if defined(_WIN64) /* MSC or MINGW */
+#       define __CONTINUATION_STACK_FRAME_SIZE_DEBUG(cont_stub) \
+  printf("[CONTINUATION_DEBUG] the continuation has a stack frame of %lld bytes, at: file \"%s\", line %d\n" \
             , (cont_stub)->cont->stack_frame_size, __FILE__, __LINE__)
-#   define __CONTINUATION_STACK_FRAME_REVERSE_DEBUG(cont_stub) \
-  printf("[CONTINUATION DEBUG] the continuation has a reverse stack frame of indeterminable size, which must be greater than %d bytes, at: file \"%s\", line %d\n" \
+#       define __CONTINUATION_STACK_FRAME_REVERSE_DEBUG(cont_stub) \
+  printf("[CONTINUATION_DEBUG] the continuation has a reverse stack frame of indeterminable size, which must be greater than %lld bytes, at: file \"%s\", line %d\n" \
             , (cont_stub)->cont->offset_to_frame_tail, __FILE__, __LINE__)
+#     else
+#       define __CONTINUATION_STACK_FRAME_SIZE_DEBUG(cont_stub) \
+  printf("[CONTINUATION_DEBUG] the continuation has a stack frame of %zd bytes, at: file \"%s\", line %d\n" \
+            , (cont_stub)->cont->stack_frame_size, __FILE__, __LINE__)
+#       define __CONTINUATION_STACK_FRAME_REVERSE_DEBUG(cont_stub) \
+  printf("[CONTINUATION_DEBUG] the continuation has a reverse stack frame of indeterminable size, which must be greater than %zd bytes, at: file \"%s\", line %d\n" \
+            , (cont_stub)->cont->offset_to_frame_tail, __FILE__, __LINE__)
+#     endif
+#   else
+#     define __CONTINUATION_STACK_FRAME_SIZE_DEBUG(cont_stub) \
+  printf("[CONTINUATION_DEBUG] the continuation has a stack frame of %d bytes, at: file \"%s\", line %d\n" \
+            , (cont_stub)->cont->stack_frame_size, __FILE__, __LINE__)
+#     define __CONTINUATION_STACK_FRAME_REVERSE_DEBUG(cont_stub) \
+  printf("[CONTINUATION_DEBUG] the continuation has a reverse stack frame of indeterminable size, which must be greater than %d bytes, at: file \"%s\", line %d\n" \
+            , (cont_stub)->cont->offset_to_frame_tail, __FILE__, __LINE__)
+#   endif
 # else
 #   define __CONTINUATION_STACK_FRAME_SIZE_DEBUG(cont_stub)
 #   define __CONTINUATION_STACK_FRAME_REVERSE_DEBUG(cont_stub)
@@ -331,14 +392,15 @@ do { \
 /* should not use any function call in CONTINUATION_INIT_INVOKE or be forced inline */
 # define CONTINUATION_INIT_INVOKE(cont_stub, stack_frame_spot_addr) \
 do { \
+  char *stack_frame_tail; \
+  assert((cont_stub)->cont->stack_frame_tail != NULL); \
   if ((cont_stub)->cont->stack_frame_addr != NULL && (cont_stub)->cont->invoke != __continuation_init_invoke_stub) { \
     /* frame address specified by CONTINUATION_CONSTRUCT of the compiler config, e.g. gcc's __builtin_frame_address() */ \
-    if ((cont_stub)->cont->stack_frame_tail == NULL) { \
-      (cont_stub)->cont->stack_frame_tail = (char *)__continuation_init_frame_tail(NULL) - CONTINUATION_STACK_FRAME_PADDING; \
-    } \
+    stack_frame_tail = (char *)__continuation_init_frame_tail(NULL, NULL); \
+    if ((cont_stub)->cont->stack_frame_tail > stack_frame_tail) (cont_stub)->cont->stack_frame_tail = stack_frame_tail; \
     (cont_stub)->cont->stack_frame_size = (cont_stub)->cont->stack_frame_addr - (cont_stub)->cont->stack_frame_tail; \
     __CONTINUATION_STACK_FRAME_SIZE_DEBUG(cont_stub); \
-    assert((cont_stub)->cont->stack_frame_addr >= (cont_stub)->addr.stack_frame_addr \
+    assert((cont_stub)->cont->stack_frame_addr + (cont_stub)->cont->stack_parameters_size >= (cont_stub)->addr.stack_frame_addr \
             && "[CONTINUATION FAULT] the stack frame size/address set by CONTINUATION_CONSTRUCT of the compiler config is not enough for reserved variables/address"); \
     BOOST_PP_EXPR_IF(__CONTINUATION_DEFINED_STACK_FRAME_SIZE \
       , if (CONTINUATION_STACK_FRAME_SIZE >= (cont_stub)->cont->stack_frame_size) { \
@@ -359,23 +421,31 @@ do { \
       ) \
     } \
   } else { \
+    char *reserved_stack_frame_addr; \
     if ((cont_stub)->cont->stack_frame_addr == NULL) { \
-      assert((cont_stub)->cont->stack_frame_tail == NULL && (cont_stub)->cont->invoke == NULL && "[CONTINUATION FAULT] compiler config compatible assertion failed"); \
-      (cont_stub)->cont->stack_frame_tail = (char *)__continuation_init_frame_tail(NULL) - CONTINUATION_STACK_FRAME_PADDING; \
+      reserved_stack_frame_addr = (cont_stub)->addr.stack_frame_addr; \
+      stack_frame_tail = (char *)__continuation_init_frame_tail(NULL, NULL); \
+      if ((cont_stub)->cont->stack_frame_tail > stack_frame_tail) (cont_stub)->cont->stack_frame_tail = stack_frame_tail; \
+      if ((cont_stub)->addr.stack_frame_addr < (char *)&reserved_stack_frame_addr) { \
+        (cont_stub)->addr.stack_frame_addr  = (char *)&reserved_stack_frame_addr + sizeof(reserved_stack_frame_addr); \
+      } \
+      if ((cont_stub)->cont->stack_frame_tail > (char *)&reserved_stack_frame_addr) { \
+        (cont_stub)->cont->stack_frame_tail = (char *)&reserved_stack_frame_addr; \
+      } \
       (cont_stub)->cont->offset_to_frame_tail = (cont_stub)->addr.stack_frame_addr - (cont_stub)->cont->stack_frame_tail; \
       (cont_stub)->cont->invoke = __continuation_init_invoke_stub; \
       if (setjmp((cont_stub)->return_buf) == 0) { \
         __continuation_invoke_helper(cont_stub); \
       } \
     } else { \
-      __continuation_init_invoke_helper(cont_stub, stack_frame_spot_addr); \
+      __continuation_init_invoke_return(cont_stub, stack_frame_spot_addr); \
     } \
     if ((size_t)(cont_stub)->cont->stack_frame_tail == (size_t)(cont_stub)->addr.stack_frame_tail - (cont_stub)->size.stack_frame_offset) { \
       __CONTINUATION_STACK_FRAME_REVERSE_DEBUG(cont_stub); \
       /* reverse stack frame detected */ \
       if ((cont_stub)->cont->stack_frame_size == 0) { \
         BOOST_PP_IF(__CONTINUATION_DEFINED_STACK_FRAME_SIZE \
-          , BOOST_PP_EXPAND(assert BOOST_PP_LPAREN() CONTINUATION_STACK_FRAME_SIZE >= (cont_stub)->cont->offset_to_frame_tail \
+          , BOOST_PP_EXPAND(assert BOOST_PP_LPAREN() CONTINUATION_STACK_FRAME_SIZE + (cont_stub)->cont->stack_parameters_size >= (cont_stub)->cont->offset_to_frame_tail \
               && "[CONTINUATION FAULT] <reverse stack frame> CONTINUATION_STACK_FRAME_SIZE " BOOST_PP_STRINGIZE(CONTINUATION_STACK_FRAME_SIZE) \
                  " isn't enough please increase it or use  XXX_SET_STACK_FRAME_SIZE(size) in continuation initialization" \
               BOOST_PP_RPAREN()); \
@@ -388,7 +458,7 @@ do { \
         ) \
       } else { \
         __CONTINUATION_STACK_FRAME_SIZE_DEBUG(cont_stub); \
-        BOOST_PP_EXPAND(assert BOOST_PP_LPAREN() (cont_stub)->cont->stack_frame_size >= (cont_stub)->cont->offset_to_frame_tail  \
+        BOOST_PP_EXPAND(assert BOOST_PP_LPAREN() (cont_stub)->cont->stack_frame_size + (cont_stub)->cont->stack_parameters_size >= (cont_stub)->cont->offset_to_frame_tail  \
           && "[CONTINUATION FAULT] <reverse stack frame> the dynamic specified frame size isn't enough, please increase the size parameter of XXX_SET_STACK_FRAME_SIZE" \
           BOOST_PP_RPAREN()); \
         BOOST_PP_EXPR_IF(__CONTINUATION_DEFINED_STACK_FRAME_SIZE \
@@ -417,7 +487,9 @@ do { \
          && "reverse stack frame compliance test failed, please revert the definition of CONTINUATION_STACK_FRAME_REVERSE/CONTINUATION_NO_FRAME_POINTER"); */ \
       (cont_stub)->cont->stack_frame_size = (cont_stub)->cont->stack_frame_addr - (cont_stub)->cont->stack_frame_tail; \
       __CONTINUATION_STACK_FRAME_SIZE_DEBUG(cont_stub); \
-      assert((cont_stub)->cont->stack_frame_size >= (cont_stub)->cont->offset_to_frame_tail \
+      assert(reserved_stack_frame_addr <= (cont_stub)->cont->stack_frame_addr + (cont_stub)->cont->stack_parameters_size \
+              && "[CONTINUATION FAULT] the deduced stack frame with parameters is not enough for reserved variables/address, try to increase the CONTINUATION_STACK_PARAMETERS_SIZE"); \
+      assert((cont_stub)->cont->stack_frame_size + (cont_stub)->cont->stack_parameters_size >= (cont_stub)->cont->offset_to_frame_tail \
               && "[CONTINUATION FAULT] the deduced stack frame size is not enough for reserved variables/address, may be caused by incompatible compilation which has no frame pointer/use a reserve stack frame"); \
       BOOST_PP_EXPR_IF(__CONTINUATION_DEFINED_STACK_FRAME_SIZE \
         , if (CONTINUATION_STACK_FRAME_SIZE >= (cont_stub)->cont->stack_frame_size) { \
@@ -442,15 +514,18 @@ do { \
 } while (0)
 #endif /* CONTINUATION_INIT_INVOKE */
 
-
 #if defined(__GNUC__) && ((__GNUC__ == 4 && __GNUC_MINOR__ >= 4) || __GNUC__ > 4)
   static void __continuation_init_invoke_stub(struct __ContinuationStub *cont_stub) __attribute__((optimize("no-omit-frame-pointer")));
+# if defined(CONTINUATION_STACK_FRAME_SIZE)
   static void __continuation_static_invoke_stub(struct __ContinuationStub *cont_stub) __attribute__((optimize("no-omit-frame-pointer")));
+# endif
   static void __continuation_dynamic_invoke_stub(struct __ContinuationStub *cont_stub) __attribute__((optimize("no-omit-frame-pointer")));
   static void __continuation_recursive_invoke_stub(struct __ContinuationStub *cont_stub) __attribute__((optimize("no-omit-frame-pointer")));
 #else
   static void __continuation_init_invoke_stub(struct __ContinuationStub *cont_stub);
+# if defined(CONTINUATION_STACK_FRAME_SIZE)
   static void __continuation_static_invoke_stub(struct __ContinuationStub *cont_stub);
+# endif
   static void __continuation_dynamic_invoke_stub(struct __ContinuationStub *cont_stub);
   static void __continuation_recursive_invoke_stub(struct __ContinuationStub *cont_stub);
 #endif
@@ -479,12 +554,12 @@ static int __continuation_invoke_frame_tail_offset(struct __ContinuationStubFram
     if (arg->frame_tail == NULL) {
       continuation_invoke_frame_tail_offset(arg);
     } else {
-      frame_tail_offset = (size_t)arg->frame_tail - (size_t)__continuation_init_frame_tail(NULL);
+      frame_tail_offset = (size_t)arg->frame_tail - (size_t)__continuation_init_frame_tail(NULL, NULL);
       CONTINUATION_DESTRUCT(arg->cont_stub.cont);
       longjmp(arg->cont_stub.return_buf, 1);
     }
   } else {
-    arg->frame_tail = __continuation_init_frame_tail(NULL);
+    arg->frame_tail = __continuation_init_frame_tail(NULL, NULL);
     if (setjmp(arg->cont_stub.return_buf) == 0) {
       (void)STATIC_ASSERT_OR_ZERO(offsetof(struct __ContinuationStubFrameTail, cont_stub) == 0
           , cont_stub_should_be_first_member_of_struct_ContinuationStubFrameTail);
@@ -500,10 +575,20 @@ static int __continuation_invoke_frame_tail_offset(struct __ContinuationStubFram
 #if defined(CONTINUATION_STACK_FRAME_SIZE)
 static void __continuation_static_invoke_stub(struct __ContinuationStub *cont_stub)
 {
-  volatile char stack_frame[CONTINUATION_STACK_FRAME_SIZE];
+  volatile char stack_frame[CONTINUATION_STACK_FRAME_SIZE + 2 * CONTINUATION_STACK_FRAME_PADDING];
+/*
+ * The new gcc makes the stack frame base pointer less than 128 + stack_frame pointer,
+ * so force a dynamic stack allocation with variable length array.
+ */
+# if defined(__GNUC__) && __GNUC__ >= 7
+  volatile char temp[cont_stub->cont->stack_frame_size + CONTINUATION_STACK_FRAME_SIZE  + CONTINUATION_STACK_FRAME_PADDING];
+# endif
   CONTINUATION_STUB_INVOKE(cont_stub);
   FORCE_NO_OMIT_FRAME_POINTER();
   stack_frame[0] = 0;
+# if defined(__GNUC__) && __GNUC__ >= 7
+  temp[0] = 0;
+# endif
   assert(0 && "error: don't use keyword 'return' inside continuation");
 } /* __continuation_static_invoke_stub */
 #endif
@@ -514,20 +599,27 @@ static void __continuation_static_invoke_stub(struct __ContinuationStub *cont_st
   || defined(CONTINUATION_EXTEND_STACK_FRAME)
 static void __continuation_dynamic_invoke_stub(struct __ContinuationStub *cont_stub)
 {
+/*
+ * GCC 7 set stack frame base pointer to stack frame pointer + 128 mostly
+ * relocate the stack frame base pointer by increasing the size of stack frame statically.
+ */
+# if defined(__GNUC__) && __GNUC__ >= 7 || defined(__x86_64__) || defined(_WIN64)
+  volatile char temp[256];
+# endif
 #if CONTINUATION_USE_C99_VLA \
   || CONTINUATION_USE_ALLOCA \
   || defined(CONTINUATION_EXTEND_STACK_FRAME)
 # if defined(CONTINUATION_DEBUG)
-  char *stack_frame_tail = (char *)__continuation_init_frame_tail(NULL);
+  char *stack_frame_tail = (char *)__continuation_init_frame_tail(NULL, NULL);
 # endif
 #endif
 #if CONTINUATION_USE_C99_VLA
-  volatile char stack_frame[cont_stub->cont->stack_frame_size];
+  volatile char stack_frame[cont_stub->cont->stack_frame_size + CONTINUATION_STACK_FRAME_PADDING];
 #elif CONTINUATION_USE_ALLOCA
-  volatile char *stack_frame = (char *)alloca(cont_stub->cont->stack_frame_size);
+  volatile char *stack_frame = (char *)alloca(cont_stub->cont->stack_frame_size + CONTINUATION_STACK_FRAME_PADDING);
 #elif defined(CONTINUATION_EXTEND_STACK_FRAME)
   volatile char *stack_frame;
-  CONTINUATION_EXTEND_STACK_FRAME(stack_frame, cont_stub->cont->stack_frame_size);
+  CONTINUATION_EXTEND_STACK_FRAME(stack_frame, cont_stub->cont->stack_frame_size + CONTINUATION_STACK_FRAME_PADDING);
 #elif !defined(CONTINUATION_STACK_FRAME_REVERSE) || CONTINUATION_STACK_FRAME_REVERSE
   volatile char stack_frame[CONTINUATION_STACK_BLOCK_SIZE];
   if ((size_t)(cont_stub->addr.stack_frame_addr - &stack_frame[0]) < cont_stub->cont->stack_frame_size) {
@@ -542,7 +634,7 @@ static void __continuation_dynamic_invoke_stub(struct __ContinuationStub *cont_s
   || CONTINUATION_USE_ALLOCA \
   || defined(CONTINUATION_EXTEND_STACK_FRAME)
 # if defined(CONTINUATION_DEBUG)
-  assert((size_t)stack_frame_tail >= (size_t)__continuation_init_frame_tail(NULL) + cont_stub->cont->stack_frame_size
+  assert((size_t)stack_frame_tail >= (size_t)__continuation_init_frame_tail(NULL, NULL) + cont_stub->cont->stack_frame_size
       && BOOST_PP_IF(CONTINUATION_USE_C99_VLA, "c99 VLA stack frame extend facility compliance test failed"
           , BOOST_PP_IF(CONTINUATION_USE_ALLOCA, "alloca() stack frame extend facility compliance test failed"
             , "compiler specified CONTINUATION_EXTEND_STACK_FRAME facility compliance test failed")));
@@ -551,6 +643,9 @@ static void __continuation_dynamic_invoke_stub(struct __ContinuationStub *cont_s
   CONTINUATION_STUB_INVOKE(cont_stub);
   FORCE_NO_OMIT_FRAME_POINTER();
   stack_frame[0] = 0;
+# if defined(__GNUC__) && __GNUC__ >= 7 || defined(__x86_64__) || defined(_WIN64)
+  temp[0] = 0;
+# endif
   assert(0 && "error: don't use keyword 'return' inside continuation");
 } /* __continuation_dynamic_invoke_stub */
 #endif
@@ -560,14 +655,14 @@ static void __continuation_recursive_invoke_stub(struct __ContinuationStub *cont
 {
   static void(* volatile continuation_recursive_invoke)(struct __ContinuationStub *) = &__continuation_recursive_invoke_stub;
   volatile char stack_frame[CONTINUATION_STACK_BLOCK_SIZE];
-  if ((size_t)(cont_stub->addr.stack_frame_addr - &stack_frame[0]) < cont_stub->size.stack_frame_size) {
+  if ((size_t)(cont_stub->addr.stack_frame_addr - &stack_frame[0]) < cont_stub->size.stack_frame_size + CONTINUATION_STACK_FRAME_PADDING) {
     if (cont_stub->cont->invoke == __continuation_init_invoke_stub) {
       cont_stub->cont->stack_frame_addr = (char *)&stack_frame[0];
     }
     continuation_recursive_invoke(cont_stub);
   }
   if (cont_stub->cont->invoke == __continuation_init_invoke_stub) {
-    cont_stub->addr.stack_frame_tail = (char *)__continuation_init_frame_tail(NULL);
+    cont_stub->addr.stack_frame_tail = (char *)__continuation_init_frame_tail(NULL, NULL);
 #if !CONTINUATION_USE_LONGJMP
     {
       static int frame_tail_offset = -1;
@@ -612,7 +707,7 @@ static void __continuation_init_invoke_stub(struct __ContinuationStub *cont_stub
     || defined(CONTINUATION_EXTEND_STACK_FRAME)
   volatile size_t dynamic_frame_size; /* use volatile to anti-optimize the rest calculation */
 #   if defined(CONTINUATION_DEBUG)
-  char *stack_frame_tail = (char *)__continuation_init_frame_tail(NULL);
+  char *stack_frame_tail = (char *)__continuation_init_frame_tail(NULL, NULL);
 #   endif
 #   if CONTINUATION_STACK_FRAME_SIZE
   if (cont_stub->cont->stack_frame_size > CONTINUATION_STACK_FRAME_SIZE) {
@@ -635,7 +730,7 @@ static void __continuation_init_invoke_stub(struct __ContinuationStub *cont_stub
 #     error "should not reached"
 #   endif /* defined(CONTINUATION_USE_C99_VLA) && CONTINUATION_USE_C99_VLA */
 #   if defined(CONTINUATION_DEBUG)
-    assert((size_t)stack_frame_tail >= (size_t)__continuation_init_frame_tail(NULL) + dynamic_frame_size
+    assert((size_t)stack_frame_tail >= (size_t)__continuation_init_frame_tail(NULL, NULL) + dynamic_frame_size
       && BOOST_PP_IF(CONTINUATION_USE_C99_VLA, "c99 VLA stack frame extend facility compliance test failed"
           , BOOST_PP_IF(CONTINUATION_USE_ALLOCA, "alloca() stack frame extend facility compliance test failed"
             , "compiler specified CONTINUATION_EXTEND_STACK_FRAME facility compliance test failed")));
@@ -668,7 +763,7 @@ static void __continuation_init_invoke_stub(struct __ContinuationStub *cont_stub
 #endif
     /* initialize continuation stack frame addr */
     cont_stub->cont->stack_frame_addr = cont_stub->addr.stack_frame_addr;
-    cont_stub->addr.stack_frame_tail = (char *)__continuation_init_frame_tail(NULL);
+    cont_stub->addr.stack_frame_tail = (char *)__continuation_init_frame_tail(NULL, NULL);
 #if !CONTINUATION_USE_LONGJMP
     {
       static int frame_tail_offset = -1;

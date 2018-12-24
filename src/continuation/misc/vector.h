@@ -2,13 +2,19 @@
  * Copyright 2013, Zhou Zhenghui <zhouzhenghui@gmail.com>
  */
 
-#ifndef VECTOR_H
-#define VECTOR_H
+#ifndef __CONTINUATION_VECTOR_H
+#define __CONTINUATION_VECTOR_H
 
 #include <stdlib.h>
 #include <string.h>
 #include <static_assert/static_assert.h>
 
+/*-
+ * struct __Vector - internal type for generic vector container
+ * @item: void pointer to the dynamical allocated memory.
+ * @size: size of the vector.
+ * @alloc: size of the allocated buffer for the vector.
+ */
 struct __Vector {
   void *item;
   size_t size;
@@ -19,9 +25,59 @@ __attribute__((__may_alias__))
 #endif
 ;
 
+/**
+ * @brief VECTOR - vector type of user specified objects.
+ * @param <type>: the type of user objects.
+ *
+ * @see VECTOR_STATIC_INITIALIZER(), VECTOR_INIT(),
+ *   VECTOR_APPEND(), VECTOR_FREE()
+ *
+ *  Example:
+ * @verbatim
+     VECTOR(int) int_array;
+    @endverbatim
+ */
+ /** @add module */
 #define VECTOR(type) struct {type *item; size_t size; size_t alloc;}
-#define VECTOR_STATIC_INITIALIZER() {NULL,0,0}
+
+/**
+ * @brief VECTOR_STATIC_INITIALIZER - static initializer for a vector at declaration
+ *
+ * See VECTOR(), VECTOR_INIT()
+ *
+ * Example:
+ * @verbatim
+     VECTOR(int) int_array = VECTOR_STATIC_INITIALIZER();
+ * @endverbatim
+ */
+#define VECTOR_STATIC_INITIALIZER() {NULL, 0, 0}
+
+/**
+ * @brief VECTOR_INIT - init a vector at runtime.
+ * @param vector: pointer to the vector.
+ *
+ * See VECTOR(), VECTOR_STATIC_INITIALIZER()
+ *
+ * Example:
+ * @verbatim
+     VECTOR(int) int_array;
+     VECTOR_INIT(&int_array);
+ * @endverbatim
+ */
 #define VECTOR_INIT(vector) do {(vector)->item=NULL; (vector)->size=0; (vector)->alloc=0;} while(0)
+
+/**
+ * @brief VECTOR_FREE - free an unused vector.
+ * @param vector: pointer to the vector.
+ *
+ * See VECTOR()
+ *
+ * Example:
+ * @verbatim
+     VECTOR(int) int_array;
+     VECTOR_INIT(&int_array);
+ * @endverbatim
+ */
 #define VECTOR_FREE(vector) do {free((vector)->item);} while(0)
 
 #define VECTOR_ITEM(vector, i) ((vector)->item[i])
@@ -104,4 +160,4 @@ inline static void __vector_append(struct __Vector *vector, size_t count, size_t
 #define VECTOR_FOREACH_REVERSE(i, vector) \
   for ((i) = &(vector)->item[size]; (i)-- >= (&(vector)->item[0]);)
 
-#endif /* VECTOR_H */
+#endif /* __CONTINUATION_VECTOR_H */

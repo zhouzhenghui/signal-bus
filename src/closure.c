@@ -47,8 +47,18 @@ void __closure_init_vars_debug(struct __Closure *closure, __ClosureVarDebugVecto
   struct __ClosureVarDebug *arg;
   VECTOR_FOREACH(arg, argv) {
     size_t offset = (size_t)arg->addr - (size_t)closure->cont.stack_frame_tail;
+#if defined(__SIZEOF_SIZE_T__) && __SIZEOF_SIZE_T__ >= 8
+# if defined(_WIN64) /* MSC or MINGW */
+    fprintf(stderr, "[CLOSURE_DEBUG] The variable \"%s\" has an offset of %lld in %lld bytes stack frame. at: file \"%s\", line %d\n"
+            , arg->name, offset, closure->cont.stack_frame_size, file, line);
+# else
+    fprintf(stderr, "[CLOSURE_DEBUG] The variable \"%s\" has an offset of %zd in %zd bytes stack frame. at: file \"%s\", line %d\n"
+            , arg->name, offset, closure->cont.stack_frame_size, file, line);
+# endif
+#else
     fprintf(stderr, "[CLOSURE_DEBUG] The variable \"%s\" has an offset of %d in %d bytes stack frame. at: file \"%s\", line %d\n"
             , arg->name, offset, closure->cont.stack_frame_size, file, line);
+#endif
     arg->value = (char *)closure->frame + offset;
   }
 }
@@ -68,7 +78,7 @@ void __closure_commit_vars_debug(__ClosureVarDebugVector *argv, size_t stack_fra
   VECTOR_FOREACH(arg, argv) {
     if (memcmp(arg->value, (char *)arg->addr + stack_frame_offset, arg->size)) {
       if (!updated) {
-        fprintf(stderr, "[CLOSURE DEBUG] Retain modification of variables: \"%s\"", arg->name);
+        fprintf(stderr, "[CLOSURE_DEBUG] Retain modification of variables: \"%s\"", arg->name);
         updated = 1;
       } else {
         fprintf(stderr, ", \"%s\"", arg->name);

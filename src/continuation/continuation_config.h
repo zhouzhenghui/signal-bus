@@ -89,7 +89,19 @@
 
 /* how many bytes to extend the deduced length of stack frame */
 #if !defined(CONTINUATION_STACK_FRAME_PADDING)
-# define CONTINUATION_STACK_FRAME_PADDING 0
+# if defined(__x86_64__) || defined(_WIN64)
+#   define CONTINUATION_STACK_FRAME_PADDING 128
+# else
+#   define CONTINUATION_STACK_FRAME_PADDING 0
+# endif
+#endif
+
+/*
+  * how many bytes to pre-extend the deduced length of stack frame
+  * to reserve the caller parameters
+ */
+#if !defined(CONTINUATION_STACK_PARAMETERS_SIZE)
+# define CONTINUATION_STACK_PARAMETERS_SIZE 128
 #endif
 
 /* the stack block size will apply to an array in
@@ -104,6 +116,12 @@
 # define CONTINUATION_ATTRIBUTE_MAY_ALIAS __attribute__((__may_alias__))
 #else
 # define CONTINUATION_ATTRIBUTE_MAY_ALIAS
+#endif
+
+#if defined (__LP64__) || defined (_LP64) || defined (__64BIT__) /* IBM XL */ || defined(_WIN64) /* MSVC */
+# ifndef __SIZEOF_SIZE_T__
+#   define __SIZEOF_SIZE_T__ 8
+# endif
 #endif
 
 #endif /* __CONTINUATION_CONFIG_H */

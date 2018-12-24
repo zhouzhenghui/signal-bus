@@ -5,37 +5,41 @@
 #ifndef __CONTINUATION_ALLOCA_H
 #define __CONTINUATION_ALLOCA_H
 
+/* user defined alloca */
+#if defined(alloca)
+# if !defined(HAVE_ALLOCA)
+#   define HAVE_ALLOCA 1
+# endif
+#elif defined(__GNUC__)
+/* When using gcc, make sure to use its builtin alloca. */
+# define alloca __builtin_alloca
+# if !defined(HAVE_ALLOCA)
+#   define HAVE_ALLOCA 1
+# endif
+#elif defined(_MSC_VER)
+/* msvc */
+# include <malloc.h>
+# define alloca _alloca
+# if !defined(HAVE_ALLOCA)
+#   define HAVE_ALLOCA 1
+# endif
+#elif defined(_IBMR2) || defined(_AIX)
 /* IBM's compilers need a #pragma
 in "each module that needs to use alloca". */
-# if defined(_IBMR2)
-#  pragma alloca
-#  if !defined(HAVE_ALLOCA)
-#    define HAVE_ALLOCA 1
-#  endif
-# endif
-
-/* user defined alloca */
-#if defined(alloca) && !defined(HAVE_ALLOCA)
-# define HAVE_ALLOCA 1
-#endif
-
-/* buildin alloca */
-#if !defined(HAVE_ALLOCA)
-/* When using gcc, make sure to use its builtin alloca. */
-# if defined(__GNUC__)
-#   define alloca __builtin_alloca
+# pragma alloca
+# if !defined(HAVE_ALLOCA)
 #   define HAVE_ALLOCA 1
 # endif
-
-# if defined(__DECC)
-#   define alloca(x) __ALLOCA(x)
+#elif defined(__DECC)
+# define alloca(x) __ALLOCA(x)
+# if !defined(HAVE_ALLOCA)
 #   define HAVE_ALLOCA 1
 # endif
-#endif
+#endif /* !defined(alloca) */
 
 /* When using cc, do whatever necessary to allow use of alloca. For many
 machines, this means including alloca.h. */
-#if !defined(HAVE_ALLOCA) && !defined(HAVE_ALLOCA_H)
+#if !defined(HAVE_ALLOCA_H)
 /* We need lots of variants for MIPS, to cover all versions and perversions
 of OSes for MIPS. */
 # if defined (__mips) || defined (MIPSEL) || defined (MIPSEB) \
@@ -44,16 +48,12 @@ of OSes for MIPS. */
     || defined (__ksr__)
 #   define HAVE_ALLOCA_H
 # endif
-
-# if defined (sparc) && defined (sun)
-#   define HAVE_ALLOCA_H
-# endif
-
-#endif /* !HAVE_ALLOCA_H && !HAVE_ALLOCA_H */
+#elif defined (sparc) && defined (sun)
+# define HAVE_ALLOCA_H
+#endif /* !defined(HAVE_ALLOCA_H) */
 
 /* include header file if needed */
-#if !defined(alloca) && defined(HAVE_ALLOCA_H)
-
+#if defined(HAVE_ALLOCA_H)
 # if !defined(HAVE_ALLOCA)
 #   define HAVE_ALLOCA 1
 # endif
@@ -64,6 +64,6 @@ of OSes for MIPS. */
 #   include <alloca.h>
 # endif /** !IBMESA */
 
-#endif /** !alloca */
+#endif /** HAVE_ALLOCA_H */
 
 #endif /* __CONTINUATION_ALLOCA_H */

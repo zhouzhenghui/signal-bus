@@ -54,8 +54,7 @@ struct __VCExceptionRegistrationRecord
 # error "MSVC C99 VLA implementation is uncompatible"
 #endif
 
-#if !defined(CONTINUATION_USE_ALLOCA) && !defined(alloca)
-# define alloca _alloca
+#if !defined(CONTINUATION_USE_ALLOCA)
 # define CONTINUATION_USE_ALLOCA 1
 #endif
 

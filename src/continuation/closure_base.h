@@ -66,7 +66,7 @@ struct __ClosureEmpty { struct __Closure closure; struct { char end; } arg; };
 
 #ifdef __GNUC__
 # define CLOSURE_IS_EMPTY(closure_ptr) \
-  (&((typeof((closure_ptr)->arg)*)0)->end == 0)
+  (&((__typeof__((closure_ptr)->arg)*)0)->end == 0)
 #else
 # define CLOSURE_IS_EMPTY(closure_ptr) \
   ((void *)&(closure_ptr)->arg == (void *)&(closure_ptr)->arg.end)

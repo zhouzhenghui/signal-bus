@@ -1,9 +1,9 @@
-c-sigslot
-=========
+Signal Bus
+==========
 
-Universal event-driven, asychronous/parallel infrastructure for C/C++, built on source level continuation and lock-free concurrency mechanism for C language. It use a universal lock-free priority queue as the foundation data-structure, so that one can programming concurrency without any lock. 
+Universal event-driven, asychronous/parallel infrastructure for C/C++, built on source level continuation and lock-free concurrency mechanism for C language. It use universal lock-free data structures as the foundation algorithms, so that high efficiency and robust concurrency system, including operation system kernels, can be built without any lock.
 
-构建于源代码层次continuation和无锁并行设施上的通用的C/C++事件驱动，异步/并行基础架构。它底层使用一个无锁优先队列数据结构，从而可以不使用锁来书写并行化程序。 
+构建于源代码层次continuation和无锁并行设施上的通用的C/C++事件驱动，异步/并行基础架构。它底层使用无锁数据结构算法实现，从而可以用于在不借助于锁互斥机制的情况下创建高效健壮的并发系统，包括操作系统内核。
 
 Several language level facilities are afforded, which help a lot in writing asychronous and parallel code in imperative language, including closure, concurrent coroutine and the asychronous signal-slot mechanism. 
 
@@ -62,7 +62,7 @@ Instead of a function pointer, we use a CLOSURE_CONNECT macro to connected the c
 
 function like macro CLOSURE_CONNECT has four parameters:
 
-仿函数宏CLOSURE_CONNECT有四个参数
+仿函数宏CLOSURE_CONNECT有四个参数：
 
 ```
 CLOSURE_CONNECT(closure_ptr, initialization, continuation, finalization);
@@ -174,15 +174,15 @@ Notice that we print the result in finalization block. The finalization is only 
 注意到我们是在finalization代码块中打印结果。finalization代码块只会在CLOSURE_FREE被调用时执行一次。之后closure将变成未连接的，这个状态和还没有使用CLOSURE_CONNECT进行连接时一样。调用一个未连接的closure将什么也不会发生。
 
 That's almost all of closure, refer to documents for more details.
+
 这几乎就是closure的全部，更多细节请参考文档。
 
 **Parallelism in Closure/Continuation**
 
 Closure is thread-safe, it is said that, closure can be invoked simultaneously. But one should deal with race conditions himslef when accessing shared data in the closure, though some data may be only accessed by the same closure.
 
-Closure是线程安全的，这是说，它可以被同时调用。但是在closure内部访问共享数据时仍然必须处理竞争问题，尽管一些数据可能仅仅在同一个closure中被访问。
+Closure是线程安全的，这是说，它可以被同时调用。但是在closure内部访问共享数据时仍然必须处理竞争问题，尽管closure内部数据只能在该closure中被访问。
 
 In the later part, high level facility will be afforded, to provide large-range thread safety by linearizing the execution in place and in a lock-free manner.
 
-在后面部分里，提供了高层次的机制，通过就地，并且是无锁的，线性化执行过程，提供了大范围线程安全性，
-
+在后面部分里，提供了高层次的机制，通过就地，并且是无锁的，线性化执行过程，来提供大范围线程安全性。

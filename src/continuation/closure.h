@@ -5,6 +5,10 @@
 #ifndef __CLOSURE_H
 #define __CLOSURE_H
 
+#ifdef CLOSURE_DEBUG
+# define CONTINUATION_DEBUG
+#endif
+
 #include "closure_base.h"
 #include "continuation.h"
 #include <preprocessor/is_void_cast.h>
@@ -68,7 +72,11 @@ do { \
   CONTINUATION_GET_FRAME_SIZE(__CLOSURE_STUB->cont_stub.cont)
 #define CLOSURE_GET_STACK_FRAME_SIZE_OF_THIS() CLOSURE_GET_FRAME_SIZE_OF_THIS()
 
-#define CLOSURE_GET_HOST_FRAME(closure_ptr) \
+# define CLOSURE_SET_PARAMS_SIZE(size) \
+  CONTINUATION_SET_PARAMS_SIZE(__CLOSURE_STUB->cont_stub.cont, size)
+# define CLOSURE_SET_STACK_PARAMS_SIZE(size) CLOSURE_SET_PARAMS_SIZE(size)
+
+  #define CLOSURE_GET_HOST_FRAME(closure_ptr) \
   CONTINUATION_GET_HOST_FRAME(&(closure_ptr)->cont)
 #define CLOSURE_GET_HOST_STACK_FRAME(closure_ptr) CLOSURE_GET_HOST_FRAME(closure_ptr)
 
@@ -109,8 +117,8 @@ do { \
 #define CLOSURE_VAR(a) \
   (* CLOSURE_VAR_ADDR(a))
 
-#define CLOSURE_RESERVE_FRAME_ADDR(addr) \
-  CONTINUATION_RESERVE_FRAME_ADDR(&__CLOSURE_STUB->cont_stub, addr)
+#define CLOSURE_RESERVE_FRAME_ADDR(addr, size) \
+  CONTINUATION_RESERVE_FRAME_ADDR(&__CLOSURE_STUB->cont_stub, addr, size)
 
 #define CLOSURE_RESERVE_VAR(v) \
   CONTINUATION_RESERVE_VAR(&__CLOSURE_STUB->cont_stub, v)
@@ -165,7 +173,7 @@ do { \
   CONTINUATION_ENFORCE_VARS_N(&__CLOSURE_STUB->cont_stub, n, tuple)
 
 #if BOOST_PP_VARIADICS
-# define CLOSURE_ENFORCE_VARS(...) CLOSURE_ENFORCE_VAR_N(__PP_VARIADIC_SIZE_OR_ZERO(__VA_ARGS__), BOOST_PP_VARIADIC_TO_TUPLE(__VA_ARGS__))
+# define CLOSURE_ENFORCE_VARS(...) CLOSURE_ENFORCE_VARS_N(__PP_VARIADIC_SIZE_OR_ZERO(__VA_ARGS__), BOOST_PP_VARIADIC_TO_TUPLE(__VA_ARGS__))
 #else
 # define CLOSURE_ENFORCE_VARS CLOSURE_ENFORCE_VARS_N
 #endif
@@ -279,7 +287,30 @@ inline static void __closure_var_vector_append_debug(__ClosureVarDebugVector *ar
   struct __ClosureVarDebug temp = { name, addr, size, value };
   VECTOR_APPEND(argv, temp);
 }
-# define __CLOSURE_VAR_VECTOR_APPEND(arg, value) \
+# if defined(__SIZEOF_SIZE_T__) && __SIZEOF_SIZE_T__ >= 8
+#   if defined(_WIN64) /* MSC or MINGW */
+#     define __CLOSURE_VAR_VECTOR_APPEND(arg, value) \
+  do { \
+    __closure_var_vector_append_debug(&__CLOSURE_PTR->argv, BOOST_PP_STRINGIZE(arg), (char *)CLOSURE_HOST_VAR_ADDR(arg) \
+        , sizeof(arg), BOOST_PP_IF(__PP_IS_EMPTY(value), NULL, (char *)(value))); \
+    BOOST_PP_EXPR_IF(BOOST_PP_NOT(__PP_IS_EMPTY(value)) \
+        , printf("[CLOSURE_DEBUG] The variable \"%s\" has an offset of %lld in %lld bytes stack frame. at: file \"%s\", line %d\n" \
+                  , BOOST_PP_STRINGIZE(arg), CLOSURE_VAR_OFFSET(arg), CLOSURE_GET_FRAME_SIZE_OF_THIS(), __FILE__, __LINE__); \
+    ) \
+  } while (0)
+#   else
+#     define __CLOSURE_VAR_VECTOR_APPEND(arg, value) \
+  do { \
+    __closure_var_vector_append_debug(&__CLOSURE_PTR->argv, BOOST_PP_STRINGIZE(arg), (char *)CLOSURE_HOST_VAR_ADDR(arg) \
+        , sizeof(arg), BOOST_PP_IF(__PP_IS_EMPTY(value), NULL, (char *)(value))); \
+    BOOST_PP_EXPR_IF(BOOST_PP_NOT(__PP_IS_EMPTY(value)) \
+        , printf("[CLOSURE_DEBUG] The variable \"%s\" has an offset of %zd in %zd bytes stack frame. at: file \"%s\", line %d\n" \
+                  , BOOST_PP_STRINGIZE(arg), CLOSURE_VAR_OFFSET(arg), CLOSURE_GET_FRAME_SIZE_OF_THIS(), __FILE__, __LINE__); \
+    ) \
+  } while (0)
+#   endif
+# else
+#   define __CLOSURE_VAR_VECTOR_APPEND(arg, value) \
   do { \
     __closure_var_vector_append_debug(&__CLOSURE_PTR->argv, BOOST_PP_STRINGIZE(arg), (char *)CLOSURE_HOST_VAR_ADDR(arg) \
         , sizeof(arg), BOOST_PP_IF(__PP_IS_EMPTY(value), NULL, (char *)(value))); \
@@ -288,6 +319,7 @@ inline static void __closure_var_vector_append_debug(__ClosureVarDebugVector *ar
                   , BOOST_PP_STRINGIZE(arg), CLOSURE_VAR_OFFSET(arg), CLOSURE_GET_FRAME_SIZE_OF_THIS(), __FILE__, __LINE__); \
     ) \
   } while (0)
+# endif
 #else
 inline static void __closure_var_vector_append(__ClosureVarVector *argv, void *addr, size_t size, void *value) {
   struct __ClosureVar temp = { addr, size, value };

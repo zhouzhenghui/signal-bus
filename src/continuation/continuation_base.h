@@ -5,12 +5,12 @@
 #ifndef __CONTINUATION_BASE_H
 #define __CONTINUATION_BASE_H
 
-#include <setjmp.h>
-
 #include "continuation_config.h"
 #include "misc/continuation_inline.h"
 #include "misc/no_omit_frame_pointer.h"
 #include "misc/vector.h"
+
+#include <setjmp.h>
 
 struct __ContinuationStub;
 
@@ -20,6 +20,7 @@ struct __Continuation {
   const char *stack_frame_spot;
   char *stack_frame_tail;
   size_t stack_frame_size;
+  size_t stack_parameters_size;
   size_t offset_to_frame_tail;
   void(*invoke)(struct __ContinuationStub *);
   void *func_addr;
@@ -45,21 +46,16 @@ inline static void continuation_init(struct __Continuation *cont, const void *st
   cont->stack_frame_addr = NULL;
   cont->stack_frame_tail = NULL;
   cont->stack_frame_size = 0;
+  cont->stack_parameters_size = CONTINUATION_STACK_PARAMETERS_SIZE;
   cont->stack_frame_spot = (const char *)stack_frame_spot;
   cont->invoke = NULL;
 }
 
-extern void(*__continuation_enforce_var)(char * volatile);
-#ifdef __cplusplus
-extern "C" {
-#endif
-  extern void (*__continuation_invoke_helper)(struct __ContinuationStub *);
-  extern void*(*__continuation_init_frame_tail)(void *);
-  extern void (*__continuation_init_invoke_helper)(struct __ContinuationStub *, const void *);
-  extern struct __ContinuationStub *(*continuation_restore_stack_frame)(const struct __ContinuationStub *cont_stub, void *stack_frame);
-#ifdef __cplusplus
-}  /* extern "C" */
-#endif
+extern void (*__continuation_enforce_var)(char * volatile);
+extern void (*__continuation_invoke_helper)(struct __ContinuationStub *);
+extern void (*__continuation_init_invoke_return)(struct __ContinuationStub *, const void *);
+extern void *(*__continuation_init_frame_tail)(void *, void *);
+extern struct __ContinuationStub *(*continuation_restore_stack_frame)(const struct __ContinuationStub *cont_stub, void *stack_frame);
 
 inline static void continuation_stub_init(struct __ContinuationStub *cont_stub, struct __Continuation *cont)
 {

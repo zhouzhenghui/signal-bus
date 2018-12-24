@@ -11,9 +11,8 @@
 
 #include <boost/preprocessor/cat.hpp>
 
-#ifdef __i386__
-
-# if !defined(CONTINUATION_USE_LONGJMP) || !CONTINUATION_USE_LONGJMP
+#if !defined(CONTINUATION_USE_LONGJMP) || !CONTINUATION_USE_LONGJMP
+# if defined(__i386__)
 #   if __GNUC__ >= 3
 #     define CONTINUATION_STUB_ENTRY(cont_stub) \
 do { \
@@ -24,6 +23,10 @@ do { \
     ((struct __ContinuationStub *)cont_stub)->cont->func_addr = anti_optimize; \
   } \
   if (((struct __ContinuationStub *)cont_stub)->cont->func_addr) goto BOOST_PP_CAT(LABEL_CONTINUATION_ENTRY_END_, __LINE__); \
+  else { \
+    /* Clobber registers using pretend setjmp */ \
+    if (setjmp(((struct __ContinuationStub *)cont_stub)->cont->invoke_buf) == 0) goto BOOST_PP_CAT(LABEL_CONTINUATION_ENTRY_END_, __LINE__); \
+  } \
   BOOST_PP_CAT(LABEL_CONTINUATION_ENTRY_BEGIN_, __LINE__): \
   { \
     __asm__("movl 0x4(%%esp), %%eax; mov %%eax, %0":"=m"(cont_stub)::"ax","bx","cx","dx","si","di","memory"); \
@@ -46,8 +49,79 @@ do { \
   __asm__ __volatile__("movl %0, %%eax\n\t jmp %1"::"m"(cont_stub), "m"(((struct __ContinuationStub *)cont_stub)->cont->func_addr):"memory");
 */
 #   endif /* __GNUC__ >= 3 */
-# endif /* CONTINUATION_USE_LONGJMP */
-#endif /* __i386__ */
+# elif defined(__x86_64__)
+#   if defined(_WIN64)
+#     error "Windows 64 (MinGW 64) not yet supported!"
+#   elif defined(__CYGWIN__)
+#     define CONTINUATION_STUB_ENTRY(cont_stub) \
+do { \
+  __label__ BOOST_PP_CAT(LABEL_CONTINUATION_ENTRY_BEGIN_, __LINE__); \
+  __label__ BOOST_PP_CAT(LABEL_CONTINUATION_ENTRY_END_, __LINE__); \
+  { \
+    void * volatile anti_optimize = && BOOST_PP_CAT(LABEL_CONTINUATION_ENTRY_BEGIN_, __LINE__); \
+    ((struct __ContinuationStub *)cont_stub)->cont->func_addr = anti_optimize; \
+  } \
+  if (((struct __ContinuationStub *)cont_stub)->cont->func_addr) goto BOOST_PP_CAT(LABEL_CONTINUATION_ENTRY_END_, __LINE__); \
+  else { \
+    /* Clobber registers using pretend setjmp */ \
+    if (setjmp(((struct __ContinuationStub *)cont_stub)->cont->invoke_buf) == 0) goto BOOST_PP_CAT(LABEL_CONTINUATION_ENTRY_END_, __LINE__); \
+  } \
+  BOOST_PP_CAT(LABEL_CONTINUATION_ENTRY_BEGIN_, __LINE__): \
+  { \
+    __asm__("movq %%rcx, %0":"=m"(cont_stub)::"ax","bx","cx","dx","si","di","r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", \
+      "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15", "memory"); \
+  } \
+  BOOST_PP_CAT(LABEL_CONTINUATION_ENTRY_END_, __LINE__): \
+  /* suppress the compile warning */; \
+} while (0)
+#     define CONTINUATION_STUB_INVOKE(cont_stub) \
+do { \
+  struct __ContinuationStub *stub = (struct __ContinuationStub *)(cont_stub); \
+  /* restore the alignment (16 bytes) of stack variables */ \
+  __asm__ __volatile__("movq %0, %%rcx\n\t " \
+                                "movq %1, %%rax \n\t" \
+                                "movb %2, %%dl \n\t " \
+                                "andb $0x0f, %%dl \n\t " \
+                                "movw %%bp, %%bx \n\t " \
+                                "andb $0xf0, %%bl \n\t" \
+                                "orb %%dl, %%bl \n\t" \
+                                "movw %%bx, %%bp \n\t " \
+                                "jmp *%%rax" \
+                                :: "m"(stub) \
+                                  , "m"((stub)->cont->func_addr) \
+                                  , "m"((stub)->cont->stack_frame_addr) \
+                                :"memory"); \
+} while (0)
+#   else /* WINDOWS or SYSV ABI */
+#     define CONTINUATION_STUB_ENTRY(cont_stub) \
+do { \
+  __label__ BOOST_PP_CAT(LABEL_CONTINUATION_ENTRY_BEGIN_, __LINE__); \
+  __label__ BOOST_PP_CAT(LABEL_CONTINUATION_ENTRY_END_, __LINE__); \
+  { \
+    void * volatile anti_optimize = && BOOST_PP_CAT(LABEL_CONTINUATION_ENTRY_BEGIN_, __LINE__); \
+    ((struct __ContinuationStub *)cont_stub)->cont->func_addr = anti_optimize; \
+  } \
+  if (((struct __ContinuationStub *)cont_stub)->cont->func_addr) goto BOOST_PP_CAT(LABEL_CONTINUATION_ENTRY_END_, __LINE__); \
+  else { \
+    /* Clobber registers using pretend setjmp */ \
+    if (setjmp(((struct __ContinuationStub *)cont_stub)->cont->invoke_buf) == 0) goto BOOST_PP_CAT(LABEL_CONTINUATION_ENTRY_END_, __LINE__); \
+  } \
+  BOOST_PP_CAT(LABEL_CONTINUATION_ENTRY_BEGIN_, __LINE__): \
+  { \
+    __asm__("movq %%rdi, %0":"=m"(cont_stub)::"ax","bx","cx","dx","si","di","r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", \
+      "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15", "memory"); \
+  } \
+  BOOST_PP_CAT(LABEL_CONTINUATION_ENTRY_END_, __LINE__): \
+  /* suppress the compile warning */; \
+} while (0)
+#     define CONTINUATION_STUB_INVOKE(cont_stub) \
+do { \
+  struct __ContinuationStub *stub = (struct __ContinuationStub *)(cont_stub); \
+  __asm__ __volatile__("movq %0, %%rdi\n\t jmp *%1"::"m"(stub), "m"(((stub))->cont->func_addr):"memory"); \
+} while (0)
+#   endif /* WINDOWS or SYSV ABI */
+# endif /* __i386__ or __x86_64__*/
+#endif /* !CONTINUATION_USE_LONGJMP */
 
 #if defined(__GCC_HAVE_DWARF2_CFI_ASM) /* Code taken from valgrind.h, under BSD License */ \
     && (((defined(__amd64__) || defined(__x86_64__)) && (defined(__linux__) || defined(macintosh) || defined(__APPLE__) || defined(__APPLE_CC__))) \
@@ -81,11 +155,10 @@ do { \
 
 #ifndef __MINGW32__
 # if !CONTINUATION_USE_C99_VLA
-#   if !defined(CONTINUATION_USE_ALLOCA) && !defined(alloca)
-#     define alloca __builtin_alloca
+#   if !defined(CONTINUATION_USE_ALLOCA)
 #     define CONTINUATION_USE_ALLOCA 1
 #   endif
-# endif 
+# endif
 #endif /* __MINGW32__ */
 
 #endif /* __CONTINUATION_COMPILER_GCC_H */
