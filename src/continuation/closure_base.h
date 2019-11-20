@@ -5,6 +5,12 @@
 #ifndef __CLOSURE_BASE_H
 #define __CLOSURE_BASE_H
 
+/**
+ * @file
+ * @ingroup closure
+ * @brief The basic declarations for closure.
+ */
+
 #include "continuation_base.h"
 #include <boost/preprocessor/inc.hpp>
 #include <boost/preprocessor/cat.hpp>
@@ -13,100 +19,146 @@
 #include <boost/preprocessor/repetition.hpp>
 #include <preprocessor/variadic_size_or_zero.h>
 
+/**
+ * @internal
+ * @brief Represent a variable captured by a closure.
+ */
 struct __ClosureVar {
-  void *addr;
-  size_t size;
-  void *value;
+  void *addr; /**< address of the variable. */
+  size_t size; /**< size of the variable. */
+  void *value; /**< pointer to the retained value of the variable. */
 };
 
+/**
+ * @internal
+ * @brief Debug version of struct __ClosureVar.
+ * @see struct __ClosureVar
+ */
 struct __ClosureVarDebug {
-  const char *name;
-  void *addr;
-  size_t size;
-  void *value;
+  const char *name; /**< pointer to name string of the variable. */
+  void *addr; /**< address of the variable. */
+  size_t size; /**< size of the variable. */
+  void *value; /**< pointer to the storage of the variable in backup stack frame. */
 };
 
+/**
+ * @internal
+ * @brief Type of array of captured variables.
+ */
 typedef VECTOR(struct __ClosureVar) __ClosureVarVector;
+/**
+ * @internal
+ * @brief Type of array of captured variables in debug mode.
+ */
 typedef VECTOR(struct __ClosureVarDebug) __ClosureVarDebugVector;
 
+/**
+ * @internal
+ * @brief The closure structure.
+ * @details It is the underlying structure of CLOSURE().
+ * @see CLOSURE()
+ */
 struct __Closure {
-  struct __Continuation cont; /* first field may be faster */
-  int connected;
+  struct __Continuation cont; /**< the continuation structure of closure. */
+  int connected; /**< indicates the closure is connected or not. */
 #ifdef CLOSURE_DEBUG
   __ClosureVarDebugVector argv;
 #else
   __ClosureVarVector argv;
-#endif
-  char *frame;
+#endif /**< array of captured variables. */
+  char *frame; /**< storage for backup stack frame of continuation. */
 };
 
+/**
+ * @internal
+ * @brief The stub structure for invoking a closure.
+ */
 struct __ClosureStub {
-  struct __ContinuationStub cont_stub;
-  struct __Closure *closure;
+  struct __ContinuationStub cont_stub; /**< the continuation stub. */
+  struct __Closure *closure; /**< pointer to the closure. */
 };
 
-STATIC_ASSERT(offsetof(struct __ClosureStub, cont_stub) == 0, self_constraint_of_internal_struct_ClosureStub);
+/** @cond */
+STATIC_ASSERT(offsetof(struct __ClosureStub, cont_stub) == 0, internal_constraint_of_struct_ClosureStub_failed);
+/** @endcond */
 
-#define __CLOSURE_FIELDS(z, n, seq) \
-  BOOST_PP_SEQ_ELEM(n, seq) BOOST_PP_CAT(_, BOOST_PP_INC(n));
-
-#define CLOSURE_N(n, tuple) \
-struct { \
-  struct __Closure closure; \
-  struct { \
-      BOOST_PP_REPEAT(n, __CLOSURE_FIELDS, BOOST_PP_TUPLE_TO_SEQ(n, tuple)) \
-      char end; /* for MSVC compatible */ \
-  } arg; \
-}
-
-struct __ClosureEmpty { struct __Closure closure; struct { char end; } arg; };
-
-#define CLOSURE_EMPTY_SIZE \
-  sizeof(struct __ClosureEmpty)
-
-#ifdef __GNUC__
-# define CLOSURE_IS_EMPTY(closure_ptr) \
-  (&((__typeof__((closure_ptr)->arg)*)0)->end == 0)
-#else
-# define CLOSURE_IS_EMPTY(closure_ptr) \
-  ((void *)&(closure_ptr)->arg == (void *)&(closure_ptr)->arg.end)
-#endif
-
-#if BOOST_PP_VARIADICS
-# define CLOSURE(...) CLOSURE_N(__PP_VARIADIC_SIZE_OR_ZERO(__VA_ARGS__), BOOST_PP_VARIADIC_TO_TUPLE(__VA_ARGS__))
-#else
-# define CLOSURE CLOSURE_N
-#endif
-
-#define CLOSURE0() CLOSURE_N(0, ())
-#define CLOSURE1(t1) CLOSURE_N(1, (t1))
-#define CLOSURE2(t1, t2) CLOSURE_N(2, (t1, t2))
-#define CLOSURE3(t1, t2, t3) CLOSURE_N(3, (t1, t2, t3))
-#define CLOSURE4(t1, t2, t3, t4) CLOSURE_N(4, (t1, t2, t3, t4))
-#define CLOSURE5(t1, t2, t3, t4, t5) CLOSURE_N(5, (t1, t2, t3, t4, t5))
-#define CLOSURE6(t1, t2, t3, t4, t5, t6) CLOSURE_N(6, (t1, t2, t3, t4, t5, t6))
-#define CLOSURE7(t1, t2, t3, t4, t5, t6, t7) CLOSURE_N(7, (t1, t2, t3, t4, t5, t6, t7))
-#define CLOSURE8(t1, t2, t3, t4, t5, t6, t7, t8) CLOSURE_N(8, (t1, t2, t3, t4, t5, t6, t7, t8))
-#define CLOSURE9(t1, t2, t3, t4, t5, t6, t7, t8, t9) CLOSURE_N(9, (t1, t2, t3, t4, t5, t6, t7, t8, t9))
-
-inline static void closure_init(struct __Closure *closure)
+/**
+ * @internal
+ * @brief Initialize a internal closure structure.
+ * @details The closure are marked as unconnected.
+ * @param closure: pointer to the closure.
+ * @see CLOSURE_INIT()
+ */
+inline static void __closure_init(struct __Closure *closure)
 {
   closure->connected = 0;
-  VECTOR_INIT(&closure->argv);
+  /* VECTOR_INIT(&closure->argv); */
   /* closure->frame = NULL; */
 }
 
-extern void(* closure_run)(void *closure);
 #ifdef __cplusplus
 extern "C" {
 #endif
-  extern void closure_free(struct __Closure *closure);
+/**
+ * @internal
+ * @brief Internal help function to invoke a closure.
+ */
+  extern void __closure_invoke(struct __Closure *closure);
+  /**
+   * @internal
+   * @brief Internal help function to CLOSURE_CONNECT().
+   */
   extern void __closure_init_vars(struct __Closure *closure, __ClosureVarVector *argv);
+  /**
+   * @internal
+   * @brief Internal help function to CLOSURE_CONNECT().
+   */
   extern void __closure_init_vars_debug(struct __Closure *closure, __ClosureVarDebugVector *argv, const char *file, unsigned int line);
+  /**
+   * @internal
+   * @brief Internal help function to CLOSURE_CONNECT().
+   */
   extern void __closure_commit_vars(__ClosureVarVector *argv, size_t stack_frame_offset);
+  /**
+   * @internal
+   * @brief Internal help function to CLOSURE_CONNECT().
+   */
   extern void __closure_commit_vars_debug(__ClosureVarDebugVector *argv, size_t stack_frame_offset, const char *file, unsigned int line);
 #ifdef __cplusplus
 }
 #endif
+
+/**
+ * @internal
+ * @brief Call a closure.
+ * @details It is the underlying function of CLOSURE_RUN().
+ * @param closure: pointer to the closure.
+ * @see CLOSURE_RUN()
+ */
+inline static void __closure_run(struct __Closure *closure)
+{
+  if (closure->connected) {
+    __closure_invoke(closure);
+  }
+}
+
+/**
+ * @internal
+ * @brief Free a closure.
+ * @details It is the underlying function of CLOSURE_FREE().
+ * @param closure: pointer to the closure.
+ * @warning It is defined in header for including the platform dependent implementation of CONTINUATION_DESTRUCT().
+ * @see CLOSURE_FREE()
+ */
+inline static void __closure_free(struct __Closure *closure)
+{
+  if (closure->connected) {
+    closure->connected = 0;
+    __closure_invoke(closure);
+    CONTINUATION_DESTRUCT(&closure->cont);
+    VECTOR_FREE(&closure->argv);
+    free(closure->frame);
+  }
+}
 
 #endif /* __CLOSURE_BASE_H */

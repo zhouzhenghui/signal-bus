@@ -55,6 +55,10 @@ m4_pattern_allow([AM_PROG_AR], [AM_PROG_AR])
 # Checks for header files.
 AC_FUNC_ALLOCA
 AC_CHECK_HEADERS([inttypes.h limits.h malloc.h memory.h stddef.h stdint.h stdlib.h string.h sys/time.h unistd.h])
+AC_CHECK_HEADERS_ONCE([boost/preprocessor/cat.hpp])
+if test "$ac_cv_header_boost_preprocessor_cat_hpp" = "no"; then
+  AC_MSG_ERROR([*** boost preprocessor headers not found])
+fi
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
@@ -88,7 +92,20 @@ fi
 
 AC_SUBST([PICFLAG])
 
-AC_CONFIG_FILES([Makefile src/Makefile src/continuation/Makefile tests/Makefile \
+# Doxygen options
+DOCDIR="doc"
+DX_DOXYGEN_FEATURE(ON)
+DX_HTML_FEATURE(ON)
+DX_CHM_FEATURE(OFF)
+DX_CHI_FEATURE(OFF)
+DX_MAN_FEATURE(OFF)
+DX_RTF_FEATURE(OFF)
+DX_XML_FEATURE(OFF)
+DX_PDF_FEATURE(OFF)
+DX_PS_FEATURE(OFF)
+DX_INIT_DOXYGEN([signalbus], [doxygen.cfg], [$(DOCDIR)])
+AC_SUBST(DOCDIR)
+AC_CONFIG_FILES([Doxyfile Makefile src/Makefile src/continuation/Makefile tests/Makefile \
         pkgconfig/signalbus.pc pkgconfig/signalbus-uninstalled.pc
   ])
 

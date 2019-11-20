@@ -8,7 +8,7 @@ int __continuation_jmpbuf_initialized = 0;
 int __continuation_jmpcode[sizeof(jmp_buf) / sizeof(void *)] = { 0 };
 void(*__continuation_enforce_var)(char * volatile) = 0;
 
-/* this function should not be compiled with any optimization */
+/* these functions should be compiled without any optimization */
 #if defined(__GNUC__) && ((__GNUC__ == 4 && __GNUC_MINOR__ >= 4) || __GNUC__ > 4)
   static void continuation_diff_jmpbuf_help(jmp_buf *) __attribute__((optimize("no-omit-frame-pointer")));
   static void continuation_diff_jmpbuf(void) __attribute__((optimize("no-omit-frame-pointer")));
@@ -17,23 +17,63 @@ void(*__continuation_enforce_var)(char * volatile) = 0;
   static void continuation_diff_jmpbuf(void);
 #endif
 
+/** @internal */
+/**
+ * @brief internal function to __continuation_invoke_helper.
+ * @detail the function simulates a invocation to the continuation
+ * and will never return.
+ * @param cont_stub: pointer to a continuation stub of the continuation.
+ * @note the function is assumed to be executed in a seperate stack frame.
+ * @see __continuation_invoke_helper
+ */
 static void continuation_invoke_helper(struct __ContinuationStub *cont_stub);
-static void __continuation_invoke_recursive(struct __ContinuationStub *cont_stub, size_t parameters);
+/**
+ * @brief internal helper to continuation_invoke_helper().
+ * @param cont_stub: pointer to a continuation stub of the continuation.
+ * @param parameters_size: size of parameters space.
+ * @note the function is assumed to be executed in a seperate stack frame.
+ * @see continuation_invoke_helper()
+ */
+static void __continuation_invoke_recursive(struct __ContinuationStub *cont_stub, size_t parameters_size);
+/**
+ * @brief internal function to __continuation_init_invoke_return.
+ * @detail help to call longjmp() when the size of current stack frame is unknown.
+ * @param cont_stub: pointer to a continuation stub of the continuation.
+ * @param stack_frame_spot: an anchor address in the stack frame of continuation.
+ * @note the function is assumed to be executed in a sperate stack frame.
+ * @see __continuation_init_invoke_return
+ */
 static void continuation_init_invoke_return(struct __ContinuationStub *cont_stub, const void *stack_frame_spot);
-static void*continuation_init_frame_tail(void *, void *);
+/**
+ * @brief internal function to __continuation_init_frame_tail.
+ * @param a_null_ptr: a pointer equals NULL when calls.
+ * @param a_dummy_ptr: a dummy pointer to make the prototype is compatible to continuation_restore_stack_frame().
+ * @return frame pointer/tail of the stack frame.
+ * @note the function is assumed to be executed in a seperate stack frame.
+ * @see __continuation_init_frame_tail
+ */
+static void*continuation_init_frame_tail(void *a_null_ptr, void *a_dummy_ptr);
+/**
+ * @brief internal function to continuation_restore_stack_frame.
+ * @param cont_stub: pointer to the continuation stub.
+ * @param stack_frame: pointer to the storage of the backup stack frame.
+ * @return the missing \p cont_stub since the value in callee may be overwritten by the function itself.
+ * @note the function is assumed to be executed in a seperate stack frame.
+ * @see continuation_restore_stack_frame
+ */
 static struct __ContinuationStub *__continuation_restore_stack_frame(const struct __ContinuationStub *cont_stub, void *stack_frame);
+/** @endinternal */
 
 /* these function pointers prevent link-time optimization */
 void (*__continuation_diff_jmpbuf)(void) = continuation_diff_jmpbuf;
 void (*__continuation_invoke_helper)(struct __ContinuationStub *) = continuation_invoke_helper;
 void*(*__continuation_init_frame_tail)(void *, void *) = continuation_init_frame_tail;
-// void*(*__continuation_init_frame_tail)(void *, void *) = (void *) __continuation_restore_stack_frame;
 void (*__continuation_init_invoke_return)(struct __ContinuationStub *, const void *) = continuation_init_invoke_return;
 struct __ContinuationStub *(*continuation_restore_stack_frame)(const struct __ContinuationStub *cont_stub, void *stack_frame) = __continuation_restore_stack_frame;
 
 static void continuation_diff_jmpbuf_help(jmp_buf *environment)
 {
-  setjmp(*environment);
+  continuation_setjmp(*environment);
   FORCE_NO_OMIT_FRAME_POINTER();
 }
 
@@ -42,9 +82,9 @@ static void continuation_diff_jmpbuf(void)
   static void(* volatile diff_jmpbuf_help)(jmp_buf *) = &continuation_diff_jmpbuf_help;
   volatile int jmpcode[sizeof(jmp_buf) / sizeof(void *)];
   jmp_buf jmpbuf1, jmpbuf2;
-  if (setjmp(jmpbuf1) == 0) {
+  if (continuation_setjmp(jmpbuf1) == 0) {
     memcpy((void *)&jmpbuf2, (void *)&jmpbuf1, sizeof(jmp_buf));
-    if (setjmp(jmpbuf1) == 0) {
+    if (continuation_setjmp(jmpbuf1) == 0) {
       int i, j = 0;
       for (i = 0; i < sizeof(jmp_buf) / sizeof(void *); i++) {
         if (((void **)&jmpbuf1)[i] != ((void **)&jmpbuf2)[i]) {
@@ -54,7 +94,7 @@ static void continuation_diff_jmpbuf(void)
       jmpcode[j] = -1;
       memcpy((void *)&jmpbuf1, (void *)&jmpbuf2, sizeof(jmp_buf));
     }
-    longjmp(jmpbuf1, 1);
+    continuation_longjmp(jmpbuf1, 1);
   } else {
     diff_jmpbuf_help(&jmpbuf1);
     {
@@ -92,7 +132,7 @@ static void __continuation_invoke_recursive(struct __ContinuationStub *cont_stub
   anti_optimize[0] = 0; /* prevent tail-call optimization */
 }
 
-/* a proxy for stack frame pre-expand and security cookie bypass */
+/* helper to pre-extend the stack frame and bypass security cookie */
 static void continuation_invoke_helper(struct __ContinuationStub *cont_stub)
 {
   static void(* volatile continuation_invoke_recursive)(struct __ContinuationStub *, size_t) = &__continuation_invoke_recursive;
@@ -114,16 +154,16 @@ static void continuation_invoke_helper(struct __ContinuationStub *cont_stub)
   anti_optimize[0] = 0; /* prevent tail-call optimization */
 }
 
-/* to ensure the longjmp can be finished when stack frame size is unknown */
+/* to ensure the longjmp() can success when the size of stack frame is unknown */
 static void continuation_init_invoke_return(struct __ContinuationStub *cont_stub, const void *stack_frame_spot)
 {
   assert(cont_stub->cont->stack_frame_tail > (char *)stack_frame_spot + sizeof(void *) && "TODO: incompatible compilation/optimization");
   cont_stub->size.stack_frame_offset = (size_t)stack_frame_spot - (size_t)cont_stub->cont->stack_frame_spot;
   cont_stub->cont->stack_frame_addr -= cont_stub->size.stack_frame_offset;
-  longjmp(cont_stub->return_buf, 1);
+  continuation_longjmp(cont_stub->return_buf, 1);
 }
 
-/* I'd like to make the function prototype match with continuation_restore_stack_frame
+/* I'd like to make the function prototype match with continuation_restore_stack_frame()
  * to ensure the calling of later will reserve the stack space of parameters
  * and return address, especially required for reversed stack frame.
  */
@@ -167,7 +207,7 @@ static struct __ContinuationStub *__continuation_restore_stack_frame(const struc
   void * volatile stack_tail;
 #if 0
   /*
-   * Code to make the frame tail within the same function.
+   * Code to take the frame tail within the same function.
    * See continuation_init_frame_tail().
    */
   if (stack_frame == NULL) {

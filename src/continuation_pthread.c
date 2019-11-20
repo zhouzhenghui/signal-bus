@@ -10,7 +10,7 @@ int __continuation_pthread_jmpbuf_initialized = 0;
 int __continuation_pthread_jmpcode[sizeof(jmp_buf) / sizeof(void *)] = { 0 };
 
 static pthread_mutex_t jmpbuf_mutex;
-/* these functions should not be compiled with any optimization */
+/* these functions should be compiled without any optimization */
 #if defined(__GNUC__) && ((__GNUC__ == 4 && __GNUC_MINOR__ >= 4) || __GNUC__ > 4)
   static void *continuation_pthread_diff_jmpbuf_help(jmp_buf *) __attribute__((optimize("no-omit-frame-pointer")));
   static void continuation_pthread_diff_jmpbuf(void) __attribute__((optimize("no-omit-frame-pointer")));
@@ -29,7 +29,7 @@ struct __AsyncTask *(*__async_copy_stack_frame)(struct __AsyncTask *) = &async_c
 static void *continuation_pthread_diff_jmpbuf_help(jmp_buf *environment)
 {
   pthread_mutex_lock(&jmpbuf_mutex);
-  setjmp(*environment);
+  continuation_setjmp(*environment);
   pthread_mutex_unlock(&jmpbuf_mutex);
   FORCE_NO_OMIT_FRAME_POINTER();
   return NULL;
@@ -43,10 +43,10 @@ static void continuation_pthread_diff_jmpbuf(void)
   pthread_t pthread_id;
   pthread_mutex_init(&jmpbuf_mutex, NULL);
   pthread_mutex_lock(&jmpbuf_mutex);
-  setjmp(jmpbuf1);
+  continuation_setjmp(jmpbuf1);
   pthread_create(&pthread_id, NULL, (void *(*)(void *))diff_jmpbuf_help, (void *)&jmpbuf1);;
   memcpy((void *)&jmpbuf2, (void *)&jmpbuf1, sizeof(jmp_buf));
-  setjmp(jmpbuf1);
+  continuation_setjmp(jmpbuf1);
   {
     int i, j = 0;
     for (i = 0; i < sizeof(jmp_buf) / sizeof(void *); i++) {
@@ -99,7 +99,7 @@ pthread_t __async_pthread_create()
   async_task->quitable = 0;
   pthread_mutex_init(&async_task->mutex, NULL);
   pthread_cond_init(&async_task->running, NULL);
-  /* Run thread with async_task as it's argument */
+  /* run thread with async_task as it's argument */
   pthread_mutex_lock(&async_task->mutex);
   error = pthread_create(&pthread_id, NULL, (void *(*)(void *))&__async_pthread_run, (void *)async_task);
   if (error) {

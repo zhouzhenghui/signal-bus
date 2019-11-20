@@ -16,12 +16,23 @@
  */
 
 /**
- * locate which compiler we are using and define
- * CONTINUATION_COMPILER_CONFIG as needed:
+ * @file
+ * @ingroup continuation
+ * @brief Compiler configuration selection header file ported from Boost library.
+ * 
+ * Locate which compiler we are using and define
+ * CONTINUATION_COMPILER_CONFIG as needed.
  */
 
+/**
+ * @brief A include file path of the compiler specified configration.
+ */
+#define CONTINUATION_COMPILER_CONFIG /* Empty definition for Doxygen */
+#undef CONTINUATION_COMPILER_CONFIG
+
+/** @cond */
 #if defined(__GNUC__)
-/*  GNU C++: */
+/*  GNU C/C++: */
 #   define CONTINUATION_COMPILER_CONFIG "compiler/gcc.h"
 
 #elif defined (__arm) && defined (__ARMCC_VERSION)
@@ -38,8 +49,9 @@
 
 #endif
 
-/**
- * TODO:
+/*-
+ * TODO: import more compilers configuration of original boost library.
+ * 
 #if defined(__GCCXML__)
 // GCC-XML emulates other compilers, it has to appear first here!
 #   define BOOST_COMPILER_CONFIG "boost/config/compiler/gcc_xml.hpp"
@@ -127,3 +139,4 @@
 
 #endif
 */
+/** @endcond */

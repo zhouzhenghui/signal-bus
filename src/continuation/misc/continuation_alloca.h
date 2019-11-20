@@ -5,6 +5,20 @@
 #ifndef __CONTINUATION_ALLOCA_H
 #define __CONTINUATION_ALLOCA_H
 
+/**
+ * @file
+ * @ingroup continuation
+ * @brief Determine whether alloca() is available and initialize the configuration appropriately.
+ * 
+ * HAVE_ALLOCA is defined to 1 if alloca() is available.
+ * User can define the alloca() macro with special implementation
+ * before the header file is included.
+ * 
+ * The common HAVE_ALLOCA_H configuration also takes effect.
+ */
+
+/** @cond */
+
 /* user defined alloca */
 #if defined(alloca)
 # if !defined(HAVE_ALLOCA)
@@ -37,11 +51,10 @@ in "each module that needs to use alloca". */
 # endif
 #endif /* !defined(alloca) */
 
-/* When using cc, do whatever necessary to allow use of alloca. For many
-machines, this means including alloca.h. */
 #if !defined(HAVE_ALLOCA_H)
-/* We need lots of variants for MIPS, to cover all versions and perversions
-of OSes for MIPS. */
+/* We need lots of variants for MIPS, to cover all versions
+ * and perversions of OSes for MIPS.
+ */
 # if defined (__mips) || defined (MIPSEL) || defined (MIPSEB) \
     || defined (_MIPSEL) || defined (_MIPSEB) || defined (__sgi) \
     || defined (__alpha) || defined (__sparc) || defined (sparc) \
@@ -52,7 +65,9 @@ of OSes for MIPS. */
 # define HAVE_ALLOCA_H
 #endif /* !defined(HAVE_ALLOCA_H) */
 
-/* include header file if needed */
+/* When using cc, do whatever necessary to allow use of alloca.
+ * For many machines, this means including alloca.h.
+ */
 #if defined(HAVE_ALLOCA_H)
 # if !defined(HAVE_ALLOCA)
 #   define HAVE_ALLOCA 1
@@ -63,7 +78,8 @@ of OSes for MIPS. */
 # else /** !IBMESA */
 #   include <alloca.h>
 # endif /** !IBMESA */
-
 #endif /** HAVE_ALLOCA_H */
+
+/** @endcond */
 
 #endif /* __CONTINUATION_ALLOCA_H */

@@ -2,35 +2,15 @@
  * Copyright 2013, Zhou Zhenghui <zhouzhenghui@gmail.com>
  */
 
-#include "continuation/closure_base.h"
 #include <stdio.h>
+#include "continuation/closure_base.h"
 
-static void __closure_run(struct __Closure *closure);
-void(* closure_run)(void *) = (void(*)(void *))__closure_run;
-
-inline static void closure_invoke(struct __Closure *closure)
+void __closure_invoke(struct __Closure *closure)
 {
   struct __ClosureStub closure_stub;
   closure_stub.closure = closure;
   continuation_stub_init(&closure_stub.cont_stub, &closure->cont);
   continuation_stub_invoke(&closure_stub.cont_stub);
-}
-
-static void __closure_run(struct __Closure *closure)
-{
-  if (closure->connected) {
-    closure_invoke(closure);
-  }
-}
-
-void closure_free(struct __Closure *closure)
-{
-  if (closure->connected) {
-    closure->connected = 0;
-    closure_invoke(closure);
-    VECTOR_FREE(&closure->argv);
-    free(closure->frame);
-  }
 }
 
 void __closure_init_vars(struct __Closure *closure, __ClosureVarVector *argv)
