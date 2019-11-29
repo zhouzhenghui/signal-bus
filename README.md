@@ -175,10 +175,10 @@ Notice that we print the result in finalization block. The finalization is only 
 
 **Keyword likely interface**
 
-The weakness of function likely macro interface is that it is hard to found the defect of the enclosed codes. Thankfully, if the loop initial declaration of C99 or C++ is available, there is a keyword likely interface can be used, and the users can put their codes of the closure in
-statement clauses.
+The weakness of function likely macro interface is that it is hard to find the defect of the enclosed codes. Thankfully, if the loop initial declaration of C99 or C++ is available, there is a keyword likely interface can be used, and the users can put their codes of the closure in
+statement clauses outward.
 
-仿函数接口的缺点是很难查找被宏包裹的代码里的错误。幸运的是，如果C99或C++标准里循环初始化申明被支持的化，可以使用类关键字的接口，这样用户可以把他们的代码放在外面的子句里。
+仿函数接口的缺点是很难查找被宏包裹的代码里的错误。幸运的是，如果C99或C++标准里循环初始化声明被支持的话，可以使用类关键字的接口，这样用户可以把他们的代码放在外面的子句里。
 
 A same example of above will be:
 
@@ -216,7 +216,7 @@ int main()
   return 0;
 }
 ```
-Now by omitting parenthesis, the code can become a little clearer. The clauses to be executed on invocation are arranged as the "if" statement block, where the continuation block will be executed when the condition is true, that is the closure is invoked, and then the finalization block when closure is freed, that is the else clause. Some initialization can be put in front of the closure.
+Now by omitting parenthesis, the code can become a little clearer. The clauses to be executed on invocation are arranged as the "if" statement block, where the continuation block will be executed when the condition is true, that the closure is invoked, and then the finalization block of else clause when the condition is false, that closure is freed. Some initialization can be put in front of the closure.
 
 通过省略花括号代码变得更加清晰了。调用发生时要执行子句被安排成像if语句块那样，当条件为真，即闭包调用时，其延续块将被执行，而当闭包被释放时，else子句中的终结块将被执行。如果有初始化的工作可以放在闭包之前。
 
