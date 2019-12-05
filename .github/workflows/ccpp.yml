@@ -30,7 +30,7 @@ jobs:
       run: ./configure
     - name: make install
       run: sudo make install
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2-beta
     - name: autoconf
       run: ./autogen.sh
     - name: configure
