@@ -12,17 +12,16 @@ jobs:
       run: sudo apt update
     - name: install requirements
       run: sudo apt install doxygen libboost-all-dev
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2-beta
       with:
         repository: zhouzhenghui/static_assert
-        ref: master
     - name: autoconf
       run: ./autogen.sh
     - name: configure
       run: ./configure
     - name: make install
       run: sudo make install
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2-beta
       with:
         repository: zhouzhenghui/preprocessor
     - name: autoconf
