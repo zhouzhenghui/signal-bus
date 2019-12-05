@@ -8,9 +8,29 @@ jobs:
     runs-on: ubuntu-16.04
     
     steps:
+    - name: apt update
+      run: sudo apt update
+    - name: install requirements
+      run: sudo apt install doxygen libboost-all-dev
     - uses: actions/checkout@v1
-    - name: install boost
-      run: sudo apt install libboost-all-dev
+      with:
+        repository: zhouzhenghui/static_assert
+    - name: autoconf
+      run: ./autogen.sh
+    - name: configure
+      run: ./configure
+    - name: make install
+      run: sudo make install
+    - uses: actions/checkout@v1
+      with:
+        repository: zhouzhenghui/preprocessor
+    - name: autoconf
+      run: ./autogen.sh
+    - name: configure
+      run: ./configure
+    - name: make install
+      run: sudo make install
+    - uses: actions/checkout@v1
     - name: autoconf
       run: ./autogen.sh
     - name: configure
