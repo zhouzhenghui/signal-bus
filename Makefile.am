@@ -15,7 +15,7 @@ EXTRA_DIST=\
  README    \
  README.md \
  autogen.sh \
- Doxygen.in \
+ Doxyfile.in \
  doc/html \
  m4
 
@@ -29,6 +29,7 @@ $(DX_CONFIG): Doxyfile.in Doxyfile
 	chmod g-w,u-w $@
 
 docs: $(DOCDIR)/$(PACKAGE).tag
+doc/html: docs
 
 #distclean-local:
 
