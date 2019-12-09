@@ -115,7 +115,7 @@ static void * __async_pthread_run(struct __AsyncTask * async_task)
   /* ensure the parent thread had prepared the continuation */
   pthread_mutex_lock(&async_task->mutex);
   pthread_mutex_unlock(&async_task->mutex);
-  assert(async_task->cont_stub.cont = &async_task->cont);
+  assert(async_task->cont_stub.cont == &async_task->cont);
   continuation_stub_invoke(&async_task->cont_stub);
   /* ensure the parent thread had released the lock */
   pthread_mutex_lock(&async_task->mutex);
