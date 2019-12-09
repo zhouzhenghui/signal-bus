@@ -55,7 +55,7 @@ m4_pattern_allow([AM_PROG_AR], [AM_PROG_AR])
 # Checks for header files.
 AC_FUNC_ALLOCA
 AC_CHECK_HEADERS([inttypes.h limits.h malloc.h memory.h stddef.h stdint.h stdlib.h string.h sys/time.h unistd.h])
-AC_CHECK_HEADERS_ONCE([boost/preprocessor/cat.hpp])
+AC_CHECK_HEADER([boost/preprocessor/cat.hpp])
 if test "$ac_cv_header_boost_preprocessor_cat_hpp" = "no"; then
   AC_MSG_ERROR([*** boost preprocessor headers not found])
 fi
