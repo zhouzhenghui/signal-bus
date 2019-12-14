@@ -50,7 +50,6 @@
  * Dummy declaration of external variable that will be hide if a local variable of same name is defined.
  * @{
  */
-extern char __CLOSURE__;
 static char __CLOSURE_STUB[1];
 STATIC_ASSERT(sizeof(*__CLOSURE_STUB) != sizeof(struct __ClosureStub), internal_constraint_of_variable_CLOSURE_STUB_failed);
 /** @} */
@@ -279,7 +278,7 @@ struct __ClosureEmpty { struct __Closure closure; struct { char end; } arg; };
       struct __Closure *ptr; \
       struct __ClosureStub stub; \
     } __CLOSURE__ = { sizeof(*__CLOSURE_STUB) == sizeof(struct __ClosureStub) }; \
-    (void)STATIC_ASSERT_OR_ZERO(sizeof(__CLOSURE__) > sizeof(char), internal_contrain_of_variable__CLOSURE__failed); \
+    (void)STATIC_ASSERT_OR_ZERO(sizeof(__CLOSURE__) > sizeof(void *), internal_contrain_of_variable__CLOSURE__failed); \
     (void)STATIC_ASSERT_OR_ZERO(sizeof(*(closure_ptr)) >= sizeof(struct __ClosureEmpty), wrong_closure_handle_in_CLOSURE_CONNECT); \
     assert(!(closure_ptr)->closure.connected && "closure " #closure_ptr " had been connected"); \
     if (__CLOSURE__.has_external_closure_stub) { \
@@ -368,11 +367,11 @@ struct __ClosureEmpty { struct __Closure closure; struct { char end; } arg; };
  */
 #ifdef __cplusplus
 # define CLOSURE_RETURN() \
-    (sizeof(__CLOSURE__) > sizeof(char) ? (CLOSURE_COMMIT_RETAIN_VARS(), __closure_return_by_throw()) \
+    (sizeof(__CLOSURE__) > sizeof(void *) ? (CLOSURE_COMMIT_RETAIN_VARS(), __closure_return_by_throw()) \
                                         : (CLOSURE_COMMIT_RETAIN_VARS(), CONTINUATION_STUB_RETURN(&__CLOSURE_STUB->cont_stub)))
 #else
 # define CLOSURE_RETURN() \
-   (CLOSURE_COMMIT_RETAIN_VARS(), CONTINUATION_RETURN(__CLOSURE_STUB))
+   (CLOSURE_COMMIT_RETAIN_VARS(), CONTINUATION_RETURN(&__CLOSURE_STUB->cont_stub))
 #endif
 
 /** @cond */
@@ -386,7 +385,7 @@ struct __ClosureEmpty { struct __Closure closure; struct { char end; } arg; };
  */
 #ifdef __cplusplus
 # define CLOSURE_RETURN_NO_RETAIN() \
-     (sizeof(__CLOSURE__) > sizeof(char) ? CONTINUATION_RETURN(&__CLOSURE_STUB->cont_stub) \
+     (sizeof(__CLOSURE__) > sizeof(void *) ? CONTINUATION_RETURN(&__CLOSURE_STUB->cont_stub) \
                                          : CONTINUATION_STUB_RETURN(&__CLOSURE_STUB->cont_stub))
 #else
 # define CLOSURE_RETURN_NO_RETAIN() \
@@ -415,7 +414,7 @@ struct __ClosureEmpty { struct __Closure closure; struct { char end; } arg; };
  * @endcode
  */
 #define closure_if(closure_ptr) \
-  for (struct __ClosureStub *__CLOSURE_STUB = NULL;;) \
+  for (struct __ClosureStub *__CLOSURE_STUB = NULL, *__CLOSURE__;;) \
     if (!__CLOSURE_STUB) { \
       CLOSURE_CONNECT(closure_ptr, (), break;, break;); \
       if (!__CLOSURE_STUB) break; \

@@ -147,7 +147,8 @@ inline static void __closure_run(struct __Closure *closure)
  * @brief Free a closure.
  * @details It is the underlying function of CLOSURE_FREE().
  * @param closure: pointer to the closure.
- * @warning It is defined in header for including the platform dependent implementation of CONTINUATION_DESTRUCT().
+ * @warning It is defined in header for including the platform dependent implementation of CONTINUATION_DESTRUCT()
+ *  and matching the resources management interfaces with closures.
  * @see CLOSURE_FREE()
  */
 inline static void __closure_free(struct __Closure *closure)
@@ -155,6 +156,10 @@ inline static void __closure_free(struct __Closure *closure)
   if (closure->connected) {
     closure->connected = 0;
     __closure_invoke(closure);
+    /*
+    * due to the compiler specific implementation of macro CONTINUATION_DESTRUCT(), VECTOR_FREE() and free()
+    * the function definition should stay in header file.
+    */
     CONTINUATION_DESTRUCT(&closure->cont);
     VECTOR_FREE(&closure->argv);
     free(closure->frame);
