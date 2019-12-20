@@ -136,7 +136,7 @@
           ((struct __ContinuationStub *)cont_stub)->addr.stack_frame_tail = ((struct __ContinuationStub *)cont_stub)->cont->stack_frame_tail \
                                                                       + ((struct __ContinuationStub *)cont_stub)->size.stack_frame_offset; \
         } \
-        do switch (0) default: { /* catch break and continue keyword inside continuation */ \
+        do switch (0) default: { /* catch break and continue keywords inside continuation */ \
           __CONTINUATION_BLOCK(continuation); \
           CONTINUATION_STUB_RETURN(cont_stub); \
         } while (0); \
@@ -213,7 +213,7 @@
  * continuation statements reaches the end. So that goto statement
  * with a label at the end can be used for a safer alternative.
  *
- * @warning Don't or be careful to use it in C++ with undelimited continuation for the unsafety longjmp(). 
+ * @warning Don't or be careful to use it in C++ with undelimited continuation for the unsafety longjmp().
  * 
  * @see CONTINUATION_CONNECT()
  */
@@ -233,7 +233,7 @@
  */
 #if !defined(CONTINUATION_STUB_RETURN)
 # define CONTINUATION_STUB_RETURN(cont_stub) \
-    continuation_longjmp(((struct __ContinuationStub*)(cont_stub))->return_buf, 1)
+    continuation_stub_return(((struct __ContinuationStub*)(cont_stub)))
 #endif
 
 /**
@@ -1453,11 +1453,12 @@ do { \
       } \
       (cont_stub)->cont->offset_to_frame_tail = (cont_stub)->addr.stack_frame_addr - (cont_stub)->cont->stack_frame_tail; \
       (cont_stub)->cont->invoke = __continuation_init_invoke_stub; \
-      if (continuation_setjmp((cont_stub)->return_buf) == 0) { \
+      if (continuation_stub_setjmp((cont_stub)->return_buf) == 0) { \
         __continuation_invoke_helper(cont_stub); \
       } \
     } else { \
-      __continuation_init_invoke_return(cont_stub, stack_frame_spot_addr); \
+      static void (*volatile continuation_init_invoke_return)(struct __ContinuationStub *, const void *stack_frame_spot) = __continuation_init_invoke_return; \
+      continuation_init_invoke_return(cont_stub, stack_frame_spot_addr); \
     } \
     if ((size_t)(cont_stub)->cont->stack_frame_tail == (size_t)(cont_stub)->addr.stack_frame_tail - (cont_stub)->size.stack_frame_offset) { \
       __CONTINUATION_STACK_FRAME_REVERSE_DEBUG(cont_stub); \
@@ -1615,11 +1616,11 @@ static int __continuation_invoke_frame_tail_offset(void *init_null)
     } else {
       frame_tail_offset = (size_t)arg->frame_tail - (size_t)__continuation_init_frame_tail(NULL, NULL);
       CONTINUATION_DESTRUCT(arg->cont_stub.cont);
-      continuation_longjmp(arg->cont_stub.return_buf, 1);
+      continuation_stub_longjmp(arg->cont_stub.return_buf, 1);
     }
   } else {
     arg->frame_tail = __continuation_init_frame_tail(NULL, NULL);
-    if (continuation_setjmp(arg->cont_stub.return_buf) == 0) {
+    if (continuation_stub_setjmp(arg->cont_stub.return_buf) == 0) {
       CONTINUATION_STUB_INVOKE(&arg->cont_stub);
     }
     return frame_tail_offset;

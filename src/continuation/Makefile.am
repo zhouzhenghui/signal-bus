@@ -1,5 +1,6 @@
 continuation_include_HEADERS = \
         select_compiler_config.h \
+        compiler_unknown.h \
         continuation_config.h \
         continuation_base.h \
         continuation.h \
@@ -15,7 +16,6 @@ nobase_continuation_include_HEADERS = \
         compiler/armcc.h \
         compiler/gcc.h \
         compiler/msvc.h \
-        compiler/unknown.h \
         misc/vector.h \
         misc/continuation_inline.h \
         misc/continuation_alloca.h \

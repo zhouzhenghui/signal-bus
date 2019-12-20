@@ -12,7 +12,6 @@
  */
 
 #include "continuation_config.h"
-#include "misc/no_omit_frame_pointer.h"
 #include "misc/continuation_inline.h"
 #include "misc/vector.h"
 
@@ -58,6 +57,31 @@ struct __ContinuationStub {
   jmp_buf return_buf; /**< jmp_buf for longjmp() to return to the caller. */
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+/**
+ * @brief Invoke a continuation through continuatin stub.
+ * 
+ * @param cont_stub: pointer to the continuation stub.
+ * 
+ * @see continuation_invoke()
+ * @see continuation_stub_return()
+ */
+void continuation_stub_invoke(struct __ContinuationStub *cont_stub);
+/**
+ * @brief Return from a continuation through continuatin stub.
+ * 
+ * @param cont_stub: pointer to the continuation stub.
+ * 
+ * @see continuation_invoke()
+ * @see continuation_stub_invoke()
+ */
+void continuation_stub_return(struct __ContinuationStub *cont_stub);
+#ifdef __cplusplus
+}
+#endif
+
 /**
  * @brief Initialize a continuation.
  * 
@@ -75,6 +99,33 @@ inline static void continuation_init(struct __Continuation *cont, const void *st
   cont->stack_parameters_size = CONTINUATION_STACK_PARAMETERS_SIZE;
   cont->stack_frame_spot = (const char *)stack_frame_spot;
   cont->invoke = NULL;
+}
+
+/**
+ * @internal
+ * @brief Internel helper for retruning from CONTINUATION_INIT_INVOKE() by calling longjmp().
+ * @details The function is assumed to be executed in a separate stack frame to ensure it is safety to
+ *  return from continuation when the size of stack frame is unknown.
+ *
+ * @param cont_stub: pointer to the continuation stub.
+ * @param stack_frame_spot: an anchor address in the stack frame of continuation.
+ * @return \p cont_stub itself.
+ * 
+ * @warning It is defined in header for including the platform dependent definition of continuation_stub_longjmp
+ * and it wanna be called through function pointer to prevent being inlined.
+ *
+ * @see CONTINUATION_INIT_INVOKE()
+ */
+static void __continuation_init_invoke_return(struct __ContinuationStub *cont_stub, const void *stack_frame_spot)
+{
+  assert(cont_stub->cont->stack_frame_tail > (char *)stack_frame_spot + sizeof(void *) && "TODO: incompatible compilation/optimization");
+  cont_stub->size.stack_frame_offset = (size_t)stack_frame_spot - (size_t)cont_stub->cont->stack_frame_spot;
+  cont_stub->cont->stack_frame_addr -= cont_stub->size.stack_frame_offset;
+    /*
+    * due to the compiler specific implementation of macro continuation_stub_longjmp()
+    * the function definition should stay in header file.
+    */
+  continuation_stub_longjmp(cont_stub->return_buf, 1);
 }
 
 /**
@@ -105,21 +156,6 @@ extern void (*__continuation_enforce_var)(char * volatile);
  * @see continuation_stub_invoke()
  */
 extern void (*__continuation_invoke_helper)(struct __ContinuationStub *);
-
-/**
- * @internal
- * @brief Internel helper for retruning from CONTINUATION_INIT_INVOKE().
- * @details It is a pointer to a wrapper of longjmp() to ensure it is safety to
- * return from continuation when the size of stack frame is unknown.
- *
- * The function pointer is used to prevent inlining calls.
- *
- * @param cont_stub: pointer to the continuation stub.
- * @param stack_frame_spot: an anchor address in the stack frame of continuation.
- * @return \p cont_stub itself.
- * @see CONTINUATION_INIT_INVOKE()
- */
-extern void (*__continuation_init_invoke_return)(struct __ContinuationStub *, const void *);
 
 /**
  * @internal
@@ -154,7 +190,7 @@ extern struct __ContinuationStub *(*continuation_restore_stack_frame)(const stru
 
 /**
  * @brief Help function to CONTINUATION_BACKUP_STACK_FRAME().
- * @details Copy the stack frame of a continuation to the backup storage. 
+ * @details Copy the stack frame of a continuation to the backup storage.
  * 
  * @param cont: pointer to the continuation.
  * @param stack_frame: pointer to the backup storage.
@@ -179,21 +215,6 @@ inline static void continuation_backup_stack_frame(const struct __Continuation *
 inline static void continuation_stub_init(struct __ContinuationStub *cont_stub, struct __Continuation *cont)
 {
   cont_stub->cont = cont;
-}
-
-/**
- * @brief Invoke a continuation through continuatin stub.
- * 
- * @param cont_stub: pointer to the continuation stub.
- * 
- * @see continuation_invoke()
- * @see __continuation_invoke_helper()
- */
-inline static void continuation_stub_invoke(struct __ContinuationStub *cont_stub)
-{
-  if (continuation_setjmp(cont_stub->return_buf) == 0) {
-    __continuation_invoke_helper(cont_stub);
-  }
 }
 
 /**

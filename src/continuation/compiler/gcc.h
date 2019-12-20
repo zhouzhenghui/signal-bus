@@ -63,19 +63,19 @@
         /* suppress the compile warning */; \
       } while (0)
 
-/*
-#define CONTINUATION_STUB_ENTRY(cont_stub) \
-  ((struct __ContinuationStub *)cont_stub)->cont->func_addr = && BOOST_PP_CAT(LABEL_BEGIN_, __LINE__); \
-  if ((size_t)(((struct __ContinuationStub *)cont_stub)->cont->func_addr) + 1) goto BOOST_PP_CAT(LABEL_END_, __LINE__); \
-  BOOST_PP_CAT(LABEL_BEGIN_, __LINE__): \
-  { \
-    __asm__ __volatile__("movl %%eax, %0":"=m"(cont_stub)::"ax","bx","cx","dx","si","di","memory"); \
-  } \
-  BOOST_PP_CAT(LABEL_END_, __LINE__):
+#if 0 /* hide unused code */
+      #define CONTINUATION_STUB_ENTRY(cont_stub) \
+        ((struct __ContinuationStub *)cont_stub)->cont->func_addr = && BOOST_PP_CAT(LABEL_BEGIN_, __LINE__); \
+        if ((size_t)(((struct __ContinuationStub *)cont_stub)->cont->func_addr) + 1) goto BOOST_PP_CAT(LABEL_END_, __LINE__); \
+        BOOST_PP_CAT(LABEL_BEGIN_, __LINE__): \
+        { \
+          __asm__ __volatile__("movl %%eax, %0":"=m"(cont_stub)::"ax","bx","cx","dx","si","di","memory"); \
+        } \
+        BOOST_PP_CAT(LABEL_END_, __LINE__):
 
-#define  CONTINUATION_STUB_INVOKE(cont_stub) \
-  __asm__ __volatile__("movl %0, %%eax\n\t jmp %1"::"m"(cont_stub), "m"(((struct __ContinuationStub *)cont_stub)->cont->func_addr):"memory");
-*/
+      #define  CONTINUATION_STUB_INVOKE(cont_stub) \
+        __asm__ __volatile__("movl %0, %%eax\n\t jmp %1"::"m"(cont_stub), "m"(((struct __ContinuationStub *)cont_stub)->cont->func_addr):"memory");
+#endif /* hide unused code */
 #   endif /* __GNUC__ >= 3 */
 # elif defined(__x86_64__)
 #   if defined(__CYGWIN__)
@@ -147,14 +147,15 @@
                                 , "m"(((struct __ContinuationStub *)(cont_stub))->cont->func_addr) \
                               :"memory"); \
       } while (0)
-#     if defined(_WIN64) /* MINGW64 */
-#       define continuation_setjmp __builtin_setjmp
-#       define continuation_longjmp __builtin_longjmp
-#     endif /* MINGW64 */
 #   endif /* WINDOWS or SYSV ABI */
 # endif /* __i386__ or __x86_64__*/
 #endif /* !CONTINUATION_USE_LONGJMP */
 /** @endcond */
+
+#if defined(_WIN64) /* MINGW64 */
+# define continuation_stub_setjmp __builtin_setjmp
+# define continuation_stub_longjmp __builtin_longjmp
+#endif /* MINGW64 */
 
 /**
  * @brief Construct continuation structure under GCC compiler.

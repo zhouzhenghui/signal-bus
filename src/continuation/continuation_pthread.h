@@ -168,4 +168,4 @@ extern "C" {
 #define ASYNC_HOST_VAR(v) \
   CONTINUATION_HOST_VAR(&__ASYNC_TASK->cont_stub, v)
 
-#endif /* __CONINUATION_PTHREAD_H */
+#endif /* __CONTINUATION_PTHREAD_H */

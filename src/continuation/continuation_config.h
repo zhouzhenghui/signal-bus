@@ -163,6 +163,28 @@
 # undef CONTINUATION_STACK_BLOCK_SIZE
 #endif
 
+/**
+ * @internal
+ * @def continuation_stub_setjmp
+ * @brief Defined to the actual setjmp() to set the return buf of a continuation stub.
+ * @see continuation_stub_longjmp
+ */
+#ifndef continuation_stub_setjmp
+# define continuation_stub_setjmp /* Empty definition for Doxygen */
+# undef continuation_stub_setjmp
+#endif
+
+/**
+ * @internal
+ * @def continuation_stub_longjmp
+ * @brief Defined to the actual longjmp() to return from continuation through a continuation stub.
+ * @see continuation_stub_setjmp
+ */
+#ifndef continuation_stub_longjmp
+# define continuation_stub_longjmp /* Empty definition for Doxygen */
+# undef continuation_stub_longjmp
+#endif
+
 /** @cond */
 /* if we don't have a compiler config set, try and find one: */
 #if !defined(CONTINUATION_COMPILER_CONFIG) && !defined(CONTINUATION_NO_COMPILER_CONFIG) && !defined(CONTINUATION_NO_CONFIG)
@@ -185,7 +207,7 @@
 #endif
 
 /* unknown platform or force pure c code using longjmp */
-#include "compiler/unknown.h"
+#include "compiler_unknown.h"
 
 /* The implementation of
  *   CONTINUATION_STUB_ENTRY and CONTINUATION_STUB_INVOKE 
@@ -280,6 +302,15 @@
 #   define __SIZEOF_SIZE_T__ 8
 # endif
 #endif
+
+#ifndef continuation_stub_setjmp
+# define continuation_stub_setjmp setjmp
+#endif
+
+#ifndef continuation_stub_longjmp
+# define continuation_stub_longjmp longjmp
+#endif
+
 /** @endcond */
 
 #endif /* __CONTINUATION_CONFIG_H */
