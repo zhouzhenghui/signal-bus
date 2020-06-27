@@ -77,7 +77,11 @@ void continuation_stub_invoke(struct __ContinuationStub *cont_stub);
  * @see continuation_invoke()
  * @see continuation_stub_invoke()
  */
-void continuation_stub_return(struct __ContinuationStub *cont_stub);
+void continuation_stub_return(struct __ContinuationStub *cont_stub)
+#if defined(__GNUC__)
+__attribute__((__noreturn__))
+#endif
+;
 #ifdef __cplusplus
 }
 #endif
